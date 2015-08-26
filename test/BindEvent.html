@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>BindEvent Test</title>
+    <link href="brtest.css" type="text/css" rel="stylesheet" />
+    <script src="../src/sr.js"></script>
+</head>
+
+<body>
+
+</body>
+<script src="brtest.js"></script>
+<script async>
+    brtest.config({
+        title: "BindEvent Test"
+    });
+
+    //普通顺序测试
+    brtest.orderTest('Order and number of tests', function(con) {
+        //触发1次triggerOne
+        con.one('triggerOne');
+        //触发2次triggerTwo
+        con.count('triggerTwo', 2);
+        //触发4次triggerFour
+        con.count('triggerFour', 4);
+        //最后触发2次bindTwo
+        con.count('bindTwo', 2);
+
+        var bindevent = new BindEvent();
+
+        bindevent.on('triggerOne', function() {
+            con.order('triggerOne');
+        });
+        bindevent.on('triggerTwo', function() {
+            con.order('triggerTwo');
+        });
+        bindevent.on('triggerFour', function() {
+            con.order('triggerFour');
+        });
+        //绑定两次bindTwo
+        bindevent.on('bindTwo', function() {
+            con.order('bindTwo');
+        });
+        bindevent.on('bindTwo', function() {
+            con.order('bindTwo');
+        });
+
+        //按顺序触发事件
+        bindevent.trigger('triggerOne');
+
+        bindevent.trigger('triggerTwo');
+        bindevent.trigger('triggerTwo');
+
+        bindevent.trigger('triggerFour');
+        bindevent.trigger('triggerFour');
+        bindevent.trigger('triggerFour');
+        bindevent.trigger('triggerFour');
+
+        bindevent.trigger('bindTwo');
+    });
+
+    brtest.orderTest('first and last tests', function(con) {
+        //优先触发first
+        con.one('first');
+        con.set('main');
+        //最后触发last
+        con.one('last');
+
+        var bindevent = new BindEvent();
+        //注册haha事件
+        //乱序设置该事件
+        bindevent.on('haha', function() {
+            con.order('main');
+        });
+        bindevent.last('haha', function() {
+            con.order('last', 'I am going to be the final');
+        });
+        bindevent.first('haha', function() {
+            con.order('first', 'I have to be the first to play!!');
+        });
+
+        //触发事件
+        bindevent.trigger('haha');
+    });
+
+    brtest.orderTest('unbind Tests', function(con) {
+        var bindevent = new BindEvent();
+
+        con.count('unbindEvent', 3);
+        con.count('unbindCall', 3);
+        con.count('unbindAll', 3);
+
+        var a = 1;
+        bindevent.on('haha1', function() {
+            con.order('unbindEvent', "i am " + a);
+        });
+
+        //触发haha1共4次，但是haha1事件3次才能合法
+        bindevent.trigger('haha1');
+        bindevent.trigger('haha1');
+        bindevent.trigger('haha1');
+        //清除haha1事件
+        bindevent.off('haha1');
+        //这次触发会无效
+        bindevent.trigger('haha1');
+
+        var b = 1;
+        var haha2call = function() {
+            con.order('unbindCall', 'haha you are ' + (b++));
+        };
+        bindevent.on('haha2', haha2call);
+
+        //触发haha2共4次，但是haha2事件触发3次才能合法
+        bindevent.trigger('haha2');
+        bindevent.trigger('haha2');
+        bindevent.trigger('haha2');
+        //清除haha1事件
+        bindevent.off('haha2', haha2call);
+        //这次触发会无效
+        bindevent.trigger('haha2');
+
+
+        bindevent.on('haha3', function() {
+            con.order('unbindAll');
+        });
+        //触发haha3共4次，但是haha3事件触发3次才能合法
+        bindevent.trigger('haha3');
+        bindevent.trigger('haha3');
+        bindevent.trigger('haha3');
+        //这里清除所有事件
+        bindevent.off();
+        //这次触发会无效
+        bindevent.trigger('haha3');
+        //因为所有事件被清除，所以都不会被触发
+        bindevent.trigger('haha1');
+        bindevent.trigger('haha2');
+    });
+
+    brtest.orderTest('unbind first and last tests', function(con) {
+        con.one('bindfirst');
+        con.count('putong', 2);
+        con.one('bindlast');
+
+        var bindevent = new BindEvent();
+        bindevent.last('haha', function() {
+            con.order('bindlast');
+        });
+        bindevent.first('haha', function() {
+            con.order('bindfirst');
+        });
+        bindevent.on('haha', function() {
+            con.order('putong');
+        })
+        bindevent.on('haha', function() {
+            con.order('putong');
+        })
+
+        bindevent.trigger('haha');
+        bindevent.off();
+        bindevent.trigger('haha');
+    });
+
+    brtest.orderTest('one tests', function(con) {
+        con.one("onetest");
+
+        var bingevent = new BindEvent();
+        bingevent.one('onetest', function() {
+            con.order('onetest');
+        });
+
+        //触发4次，但是onetest只会执行一次
+        bingevent.trigger('onetest');
+        bingevent.trigger('onetest');
+        bingevent.trigger('onetest');
+        bingevent.trigger('onetest');
+    });
+
+    brtest.test('data tests', function(con) {
+        var bindevent = new BindEvent();
+
+        bindevent.on('dateTest', function(e) {
+            con.equal('bind bData', e.bData, "I am bind bData");
+            con.equal('bind tData', e.tData, "I am tData");
+        }, "I am bind bData");
+
+        bindevent.first('dateTest', function(e) {
+            con.equal('first bData', e.bData, "I am first bData");
+            con.equal('first tData', e.tData, "I am tData");
+        }, "I am first bData");
+
+        bindevent.last('dateTest', function(e) {
+            con.equal('last bData', e.bData, "I am last bData");
+            con.equal('last tData', e.tData, "I am tData");
+        }, "I am last bData");
+
+        bindevent.trigger('dateTest', "I am tData");
+    });
+
+    brtest.orderTest('ever test', function(con) {
+        con.count('syncCall', 2);
+        con.one('asyncCall').count('everBind', 2);
+
+        var bindevent = new BindEvent();
+
+        bindevent.ever('haha1');
+        bindevent.on('haha1', function() {
+            //ever后默认异步调用
+            con.order('asyncCall');
+        });
+
+        bindevent.on('haha2', function(e) {
+            con.order('syncCall', e.tData);
+        });
+        //同步触发
+        bindevent.ever('haha2', 'i am haha2', true);
+        bindevent.on('haha2', function(e) {
+            con.order('syncCall', e.tData);
+        });
+
+        //先注册的事件会被先同步触发
+        bindevent.on('haha3', function() {
+            con.order('everBind');
+        });
+        //设置异步即时触发
+        bindevent.ever('haha3');
+        //会模拟异步触发
+        bindevent.on('haha3', function() {
+            con.order('everBind');
+        });
+        //trigger会无效
+        bindevent.trigger('haha3');
+
+    });
+
+    brtest.orderTest('clone order test', function(con) {
+        var one = con.set('one');
+        var two = con.set('two');
+        var three = con.set('three');
+        var four = con.set('four');
+
+        var bindevent = new BindEvent();
+
+        bindevent.on('haha', function() {
+            con.order('one');
+        });
+
+        var bindevent1_1 = bindevent.clone();
+        bindevent1_1.on('haha', function() {
+            con.order('two');
+        });
+
+        var bindevent1_2 = bindevent1_1.clone();
+        bindevent1_2.on('haha', function() {
+            con.order('three');
+        });
+
+        var bindevent2_1 = bindevent.clone();
+        bindevent2_1.on('haha', function() {
+            con.order('four');
+        });
+
+        bindevent.trigger('haha');
+    });
+
+    brtest.test('clone data test', function(con) {
+        var bindevent = new BindEvent();
+
+        bindevent.on('haha', function(e) {
+            con.equal('bData1', e.bData, 'haha data');
+            con.equal('tData1', e.tData, 'i am tdata');
+        }, 'haha data');
+
+        var bindevent2 = bindevent.clone();
+
+        bindevent2.on('haha', function(e) {
+            con.equal('bData2', e.bData, 'haha data2');
+            con.equal('tData2', e.tData, 'i am tdata');
+        }, 'haha data2');
+
+        var bindevent3 = bindevent2.clone();
+
+        bindevent3.on('haha', function(e) {
+            con.equal('bData3', e.bData, 'haha data3');
+            con.equal('tData3', e.tData, 'i am tdata');
+        }, 'haha data3');
+
+        bindevent.trigger('haha', 'i am tdata');
+    });
+</script>
+
+</html>

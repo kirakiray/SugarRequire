@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>Require Test</title>
+    <link href="brtest.css" type="text/css" rel="stylesheet" />
+    <script src="../src/sr.js"></script>
+</head>
+
+<body>
+
+</body>
+<script src="brtest.js"></script>
+<script async>
+    brtest.config({
+        title: "Require Test"
+    });
+
+    brtest.test('loadscript test', function(con) {
+        R.loadScript('files/setData1', function() {
+            con.equal('loadscript data 1', window.wdata1, "IamData1");
+        });
+    });
+
+    brtest.test('scriptAgent same file test', function(con) {
+        var agentEvent = R.scriptAgent('files/setData2');
+        agentEvent.on('succeed', function() {
+            con.equal('scriptAgent first', window.wdata2, "IamData2");
+        });
+
+        var agentEvent2 = R.scriptAgent('files/setData2');
+        agentEvent2.on('succeed', function() {
+            con.equal('scriptAgent second', window.wdata2, "IamData2");
+
+            var agentEvent3 = R.scriptAgent('files/setData2');
+            agentEvent3.on('succeed', function() {
+                con.equal('scriptAgent three', window.wdata2, "IamData2");
+            });
+        });
+    });
+
+    brtest.test("groupScript test", function(con) {
+        var groupevent = R.groupScript(['files/setData1', 'files/setData2', 'files/setData3']);
+        groupevent.on('loading', function(e) {
+            console.log(e);
+        });
+        groupevent.on('chainend', function(e) {
+            con.equal('chainend 1', window.wdata1, "IamData1");
+            con.equal('chainend 2', window.wdata2, "IamData2");
+            con.equal('chainend 3', window.wdata3, "IamData3");
+        });
+    });
+
+    brtest.orderTest('require_order_test', function(con) {
+        con.one('setData4');
+        con.one('setData1').one('setData2');
+        con.one('setData3');
+        con.one('setData5');
+        con.one('data_chainend');
+    });
+
+    brtest.test('require data test', function(con) {
+        var ordername = 'require_order_test';
+        var r1 = R.require('files/setData4').done(function() {
+            con.equal('first require', window.wdata4, "IamData4");
+            brtest.order(ordername, "setData4");
+        });
+        var r2_1 = r1.require('files/setData1', 'files/setData2').done(function() {
+            con.equal('second require', window.wdata1, "IamData1");
+            brtest.order(ordername, "setData1");
+            con.equal('third require', window.wdata2, "IamData2");
+            brtest.order(ordername, "setData2");
+        });
+        var r2_2 = r1.require('files/setData3').done(function() {
+            con.equal('fourth require', window.wdata3, "IamData3");
+            brtest.order(ordername, "setData3");
+        });
+        var r3 = r2_2.require('files/setData5').done(function() {
+            con.equal('fifth require', window.wdata5, "IamData5");
+            brtest.order(ordername, "setData5");
+        });
+
+        r1._rEvent.on('chainend', function() {
+            brtest.order(ordername, "data_chainend");
+        });
+    });
+</script>
+
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>GatherFunction Test</title>
+    <link href="brtest.css" type="text/css" rel="stylesheet" />
+    <script src="../src/sr.js"></script>
+</head>
+
+<body>
+
+</body>
+<script src="brtest.js"></script>
+<script async>
+    brtest.config({
+        title: "GatherFunction Test"
+    });
+
+    brtest.orderTest('normal test', function(con) {
+        con.one('before_init');
+        con.one('after_init');
+        con.one('half_init');
+
+        var gatherfun = new GatherFunction();
+        gatherfun.on('ready', function() {
+            con.order('before_init');
+        });
+        var subgatherFun1 = gatherfun.create();
+        var subgatherFun2 = gatherfun.create();
+
+        gatherfun.init();
+        subgatherFun1();
+        subgatherFun2();
+
+        var gatherfun2 = new GatherFunction();
+        gatherfun2.on('ready', function() {
+            con.order('after_init');
+        });
+        var subGatherFun3 = gatherfun2.create();
+        var subGatherFun4 = gatherfun2.create();
+
+        subGatherFun3();
+        subGatherFun4();
+        gatherfun2.init();
+
+        var gatherfun3 = new GatherFunction();
+        gatherfun3.on('ready', function() {
+            con.order('half_init');
+        });
+        var subGatherFun5 = gatherfun3.create();
+        var subGatherFun6 = gatherfun3.create();
+
+        subGatherFun5();
+        gatherfun3.init();
+        subGatherFun6();
+    });
+
+    brtest.test('data test', function(con) {
+        var gatherfun = new GatherFunction();
+        gatherfun.on('ready', function(e) {
+            var tData = e.tData;
+            con.equal('sub1 data', tData[0], 'I am subdata 1');
+            con.equal('sub2 data', tData[1], 'ye ye subdata 2');
+            con.equal('sub3 data', tData[2], 'understand subdata 3');
+        });
+        var sungatfun1 = gatherfun.create();
+        var sungatfun2 = gatherfun.create();
+        var sungatfun3 = gatherfun.create();
+
+        sungatfun2('ye ye subdata 2');
+        sungatfun3('understand subdata 3');
+        sungatfun1('I am subdata 1');
+
+        gatherfun.init();
+    });
+</script>
+
+</html>

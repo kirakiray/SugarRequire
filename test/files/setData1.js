@@ -1,0 +1,1 @@
+window.wdata1 = "IamData1";
