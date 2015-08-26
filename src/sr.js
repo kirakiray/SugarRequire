@@ -150,17 +150,17 @@
         var everData = evesObj.ever;
         if (everData) {
             var callObj = {
-                bData: data,
-                tData: everData.data,
+                //bData: data,
+                data: everData.data,
                 name: eventName
             };
             if (everData.type == 1) {
                 //状态1为同步执行
-                callback(callObj);
+                callback(callObj, data);
             } else if (everData.type == 2) {
                 //状态2为异步执行
                 nextTick(function() {
-                    callback(callObj);
+                    callback(callObj, data);
                 });
             }
             return;
@@ -227,19 +227,19 @@
         //优先执行first call
         var firstEvent = evesObj._first;
         firstEvent && firstEvent._call({
-            bData: firstEvent.data,
-            tData: tData,
+            //bData: firstEvent.data,
+            data: tData,
             name: eventName
-        });
+        }, firstEvent.data);
 
         //遍历数组内函数
         var newEventGroup = [];
         each(evesObj.eves, function(e) {
             e._call({
-                bData: e.data,
-                tData: tData,
+                //bData: e.data,
+                data: tData,
                 name: eventName
-            });
+            }, e.data);
             //添加非一次性事件
             if (!e.one) {
                 newEventGroup.push(e);
@@ -252,10 +252,10 @@
         //最后执行last call
         var lastEvent = evesObj._last;
         lastEvent && lastEvent._call({
-            bData: lastEvent.data,
-            tData: tData,
+            //bData: lastEvent.data,
+            data: tData,
             name: eventName
-        });
+        }, lastEvent.data);
 
         //触发克隆对象
         var subbindevent = this._sub;
@@ -392,19 +392,19 @@
     Require.fn.loading = emptyFun;
     Require.fn.done = function(fun) {
         this._rEvent.on('ready', function(e) {
-            fun(e.tData);
+            fun(e.data);
         });
         return this;
     };
     Require.fn.doing = function(fun) {
         this._rEvent.on('loading', function(e) {
-            fun(e.tData);
+            fun(e.data);
         });
         return this;
     };
     Require.fn.fail = function(fun) {
         this._rEvent.on('error', function(e) {
-            fun(e.tData);
+            fun(e.data);
         });
         return this;
     };
@@ -484,7 +484,7 @@
                 var scriptEvent = R.scriptAgent(e);
                 var subFun = gatherFun.create();
                 scriptEvent.on('succeed', function(e2) {
-                    var tData = e2.tData;
+                    var tData = e2.data;
                     //触发loading函数
                     gatherFun.trigger('loading', tData);
                     //触发子函数并记录数据

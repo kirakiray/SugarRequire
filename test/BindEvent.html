@@ -181,22 +181,22 @@
     brtest.test('data tests', function(con) {
         var bindevent = new BindEvent();
 
-        bindevent.on('dateTest', function(e) {
-            con.equal('bind bData', e.bData, "I am bind bData");
-            con.equal('bind tData', e.tData, "I am tData");
+        bindevent.on('dateTest', function(e, data) {
+            con.equal('bind bData', data, "I am bind bData");
+            con.equal('bind data', e.data, "I am data");
         }, "I am bind bData");
 
-        bindevent.first('dateTest', function(e) {
-            con.equal('first bData', e.bData, "I am first bData");
-            con.equal('first tData', e.tData, "I am tData");
+        bindevent.first('dateTest', function(e, data) {
+            con.equal('first bData', data, "I am first bData");
+            con.equal('first data', e.data, "I am data");
         }, "I am first bData");
 
-        bindevent.last('dateTest', function(e) {
-            con.equal('last bData', e.bData, "I am last bData");
-            con.equal('last tData', e.tData, "I am tData");
+        bindevent.last('dateTest', function(e, data) {
+            con.equal('last bData', data, "I am last bData");
+            con.equal('last data', e.data, "I am data");
         }, "I am last bData");
 
-        bindevent.trigger('dateTest', "I am tData");
+        bindevent.trigger('dateTest', "I am data");
     });
 
     brtest.orderTest('ever test', function(con) {
@@ -212,12 +212,12 @@
         });
 
         bindevent.on('haha2', function(e) {
-            con.order('syncCall', e.tData);
+            con.order('syncCall', e.data);
         });
         //同步触发
         bindevent.ever('haha2', 'i am haha2', true);
         bindevent.on('haha2', function(e) {
-            con.order('syncCall', e.tData);
+            con.order('syncCall', e.data);
         });
 
         //先注册的事件会被先同步触发
@@ -268,23 +268,23 @@
     brtest.test('clone data test', function(con) {
         var bindevent = new BindEvent();
 
-        bindevent.on('haha', function(e) {
-            con.equal('bData1', e.bData, 'haha data');
-            con.equal('tData1', e.tData, 'i am tdata');
+        bindevent.on('haha', function(e, data) {
+            con.equal('bData1', data, 'haha data');
+            con.equal('data1', e.data, 'i am tdata');
         }, 'haha data');
 
         var bindevent2 = bindevent.clone();
 
-        bindevent2.on('haha', function(e) {
-            con.equal('bData2', e.bData, 'haha data2');
-            con.equal('tData2', e.tData, 'i am tdata');
+        bindevent2.on('haha', function(e, data) {
+            con.equal('bData2', data, 'haha data2');
+            con.equal('data2', e.data, 'i am tdata');
         }, 'haha data2');
 
         var bindevent3 = bindevent2.clone();
 
-        bindevent3.on('haha', function(e) {
-            con.equal('bData3', e.bData, 'haha data3');
-            con.equal('tData3', e.tData, 'i am tdata');
+        bindevent3.on('haha', function(e, data) {
+            con.equal('bData3', data, 'haha data3');
+            con.equal('data3', e.data, 'i am tdata');
         }, 'haha data3');
 
         bindevent.trigger('haha', 'i am tdata');
