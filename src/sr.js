@@ -10,7 +10,7 @@
         baseUrl: "",
         dataMap: dataMap,
         //临时挂起的模块对象
-        tempM: null,
+        tempM: {},
         //版本号
         version: "sugarRequire 2.0",
     };
@@ -33,9 +33,12 @@
             if (!isTick) {
                 isTick = true;
                 setTimeout(function() {
-                    each(nextTickArr, function(e) {
+                    for (var i = 0; i < nextTickArr.length; i++) {
+                        nextTickArr[i]();
+                    }
+                    /*each(nextTickArr, function(e) {
                         e();
-                    });
+                    });*/
                     nextTickArr = [];
                     isTick = false;
                 }, 0);
@@ -318,7 +321,7 @@
     //分散集合器
     //只有当所有子方法运行，并且init后才会触发ready事件
     //继承BindEvent
-    var GatherFunction = function() {
+    var GatherEvent = function(chainEndName) {
         BindEvent.apply(this, arguments);
         //记录id
         this._cid = 0;
@@ -328,10 +331,12 @@
         this._isInit = false;
         //是否create
         this._isCreate = false;
+        //记录chainend的激活名
+        this._ceName = chainEndName || 'chainend';
     };
-    GatherFunction.fn = GatherFunction.prototype = create(BindEvent.prototype);
+    GatherEvent.fn = GatherEvent.prototype = create(BindEvent.prototype);
     //制造子方法
-    GatherFunction.fn.create = function() {
+    GatherEvent.fn.create = function() {
         this._isCreate = true;
         var _this = this;
         //当前id并递增
@@ -343,15 +348,15 @@
             _this._dMap[id] = data;
             //判断是否触发
             if (_this._isInit && _this._cid == 0) {
-                _this.trigger('chainend', _this._dMap);
+                _this.trigger(_this._ceName, _this._dMap);
             }
         };
     };
     //准备完毕的方法
-    GatherFunction.fn.init = function() {
+    GatherEvent.fn.init = function() {
         this._isInit = true;
         if (this._isCreate && this._cid == 0) {
-            this.trigger('chainend', this._dMap);
+            this.trigger(this._ceName, this._dMap);
         }
     };
 
@@ -359,19 +364,20 @@
     var Require = function(urls, originGather) {
         if (originGather) {
             this._origin = originGather;
-            var rEvent = this._rEvent = new BindEvent();
-            var subFun = originGather.create();
-            rEvent.last('ready', function() {
-                subFun();
-            });
+            this._rEvent = new BindEvent();
         } else {
-            this._origin = this._rEvent = new GatherFunction;
+            this._origin = this._rEvent = new GatherEvent();
             this._origin.init();
         }
+        //完成ready后进行subFun的运行
+        var subFun = this._origin.create();
+        this._rEvent.last('ready', function() {
+            subFun();
+        });
 
         var _this = this;
-        this.done(function(data) {
-            _this.ready(data);
+        this._rEvent.on('ready', function(e) {
+            _this.ready.apply(this, e.data);
         });
         this.doing(function(data) {
             _this.loading(data);
@@ -392,7 +398,8 @@
     Require.fn.loading = emptyFun;
     Require.fn.done = function(fun) {
         this._rEvent.on('ready', function(e) {
-            fun(e.data);
+            //fun(e.data);
+            fun.apply(this, e.data);
         });
         return this;
     };
@@ -434,6 +441,98 @@
 
     //main
     var R = {
+        //设置define模块
+        setDefine: function(scriptData) {
+            var tempM = baseResources.tempM;
+            //判断value类型进行剥取模块内容
+            var tempValueType = getType(tempM.value);
+            var content;
+            switch (tempValueType) {
+                case "function":
+                    //模块结构 
+                    var modules = {
+                        exports: {}
+                    };
+
+                    //是否有使用过内部require
+                    var hasUseRequire = false;
+
+                    //首层require集合器
+                    var firstRequireGather = new GatherEvent('firstRequireEnd');
+
+                    var reValue = tempM.value(function() {
+                        //设置使用过内部require
+                        hasUseRequire = true;
+
+                        //继承使用require
+                        var requireObj = R.require.apply({}, arguments);
+
+                        //生成子集合器
+                        var subRequire = firstRequireGather.create();
+
+                        //链完成后触发子集合器
+                        requireObj._rEvent.on('chainend', subRequire);
+
+                        //返回值
+                        return requireObj;
+                    }, modules.exports, modules);
+
+                    if (!hasUseRequire) {
+                        //没有使用内部require
+                        //优先使用返回值
+                        reValue && (modules.exports = reValue);
+                        content = modules;
+
+                        //永久激活模块
+                        scriptData.event.ever('done', modules.exports);
+                    } else {
+                        //使用了内部的require
+                        //初始化集合器 
+                        firstRequireGather.init();
+
+                        //集合完毕后永久激活模块
+                        firstRequireGather.on('firstRequireEnd', function() {
+                            scriptData.event.ever('done', modules.exports);
+                        });
+                    }
+                    break;
+                default:
+                    //模块数据永久done
+                    scriptData.event.ever('done', tempM.value);
+                    content = {
+                        exports: tempM.value
+                    };
+                    break;
+            };
+            //赋予值
+            scriptData.content = content;
+        },
+        //根据temM获取相应内容
+        mProcess: function(scriptData) {
+            //获取事件对象
+            var scriptEvent = scriptData.event;
+            //根据type获取值
+            switch (baseResources.tempM.type) {
+                case "define":
+                    //修正数据
+                    scriptData.type = "define";
+                    R.setDefine(scriptData);
+                    break;
+                case "defer":
+                    //修正数据
+                    scriptData.type = "defer";
+                    break;
+                default:
+                    //修正数据
+                    scriptData.type = "file";
+                    scriptData.status = "ready";
+                    //普通文件永久性触发done
+                    scriptEvent.ever('done');
+                    break;
+            };
+            //还原tempM
+            baseResources.tempM = {};
+        },
         //加载script用函数
         loadScript: function(url, callback) {
             var scriptTag = getScriptTag(concatJS(url));
@@ -451,10 +550,6 @@
             };
             windowHead.appendChild(scriptTag);
         },
-        //根据temM获取相应内容
-        getTempData: function() {
-
-        },
         //loadScript前的代理
         scriptAgent: function(url) {
             var scriptData = "";
@@ -463,12 +558,26 @@
             if (!dataMap[url]) {
                 scriptData = dataMap[url] = {
                     //加载状态
+                    //wait表示等待中     succeed表示script加载完毕（并不代表可立即执行）     error表示加载错误      done表示充分准备完毕加载完成   
                     status: "wait",
                     //挂载对象
-                    event: new BindEvent()
+                    event: new GatherEvent('done'),
+                    //标签
+                    //script: "",
+                    //类型 file普通文件  define模块  defer模块
+                    //type: "",
+                    //模块内容
+                    //content : ""
                 }
                 R.loadScript(removeJS(url), function(sData) {
-                    scriptData.event.ever(scriptData.status = sData.status);
+                    //修正数据
+                    extend(scriptData, sData);
+
+                    //触发加载完成事件
+                    scriptData.event.ever(sData.status);
+
+                    //中转加工逻辑
+                    R.mProcess(scriptData);
                 });
             } else {
                 scriptData = dataMap[url];
@@ -479,11 +588,12 @@
         },
         //组载入文件
         groupScript: function(urls) {
-            var gatherFun = new GatherFunction();
+            var gatherFun = new GatherEvent('allloadend');
             each(urls, function(e) {
                 var scriptEvent = R.scriptAgent(e);
                 var subFun = gatherFun.create();
-                scriptEvent.on('succeed', function(e2) {
+                //scriptEvent.on('succeed', function(e2) {
+                scriptEvent.on('done', function(e2) {
                     var tData = e2.data;
                     //触发loading函数
                     gatherFun.trigger('loading', tData);
@@ -493,20 +603,17 @@
             });
             gatherFun.init();
             return gatherFun;
-            /*gatherFun.on('chainend', function(data) {
-                callback(data);
-            });*/
         },
         //require拆分中转器
         splitter: function(requireObj) {
             //获取urls
             var urls = requireObj._urls;
             var groupScriptGatherFun = R.groupScript(urls);
-            groupScriptGatherFun.on('chainend', function(data) {
-                requireObj._rEvent.trigger('ready');
+            groupScriptGatherFun.on('allloadend', function(e) {
+                requireObj._rEvent.trigger('ready', e.data);
                 //获取下一组urls并载入
-                each(requireObj._subRequire, function(e) {
-                    R.splitter(e);
+                each(requireObj._subRequire, function(e2) {
+                    R.splitter(e2);
                 });
             });
         },
@@ -519,14 +626,35 @@
                 R.splitter(requireObj);
             });
             return requireObj;
+        },
+        //定义数据模块
+        define: function(dValue, dName) {
+            baseResources.tempM = {
+                type: "define",
+                value: dValue,
+                name: dName
+            };
+        },
+        //定义延迟模块
+        defer: function(dValue, dName) {
+            baseResources.tempM = {
+                type: "defer",
+                value: dValue,
+                name: dName
+            };
         }
     };
 
     //init
+    sr.require = R.require;
+    Global.sr = sr;
+    (!Global.require) && (Global.require = R.require);
+    (!Global.define) && (Global.define = R.define);
+    (!Global.defer) && (Global.defer = R.defer);
 
     //test
     Global.BindEvent = BindEvent;
-    Global.GatherFunction = GatherFunction;
+    Global.GatherEvent = GatherEvent;
     Global.Require = Require;
     Global.R = R;
 })(window);

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>GatherFunction Test</title>
+    <title>GatherEvent Test</title>
     <link href="brtest.css" type="text/css" rel="stylesheet" />
     <script src="../src/sr.js"></script>
 </head>
@@ -15,7 +15,7 @@
 <script src="brtest.js"></script>
 <script async>
     brtest.config({
-        title: "GatherFunction Test"
+        title: "GatherEvent Test"
     });
 
     brtest.orderTest('normal test', function(con) {
@@ -23,8 +23,8 @@
         con.one('after_init');
         con.one('half_init');
 
-        var gatherfun = new GatherFunction();
-        gatherfun.on('ready', function() {
+        var gatherfun = new GatherEvent();
+        gatherfun.on('chainend', function() {
             con.order('before_init');
         });
         var subgatherFun1 = gatherfun.create();
@@ -34,8 +34,8 @@
         subgatherFun1();
         subgatherFun2();
 
-        var gatherfun2 = new GatherFunction();
-        gatherfun2.on('ready', function() {
+        var gatherfun2 = new GatherEvent();
+        gatherfun2.on('chainend', function() {
             con.order('after_init');
         });
         var subGatherFun3 = gatherfun2.create();
@@ -45,8 +45,8 @@
         subGatherFun4();
         gatherfun2.init();
 
-        var gatherfun3 = new GatherFunction();
-        gatherfun3.on('ready', function() {
+        var gatherfun3 = new GatherEvent();
+        gatherfun3.on('chainend', function() {
             con.order('half_init');
         });
         var subGatherFun5 = gatherfun3.create();
@@ -58,9 +58,9 @@
     });
 
     brtest.test('data test', function(con) {
-        var gatherfun = new GatherFunction();
-        gatherfun.on('ready', function(e) {
-            var tData = e.tData;
+        var gatherfun = new GatherEvent();
+        gatherfun.on('chainend', function(e) {
+            var tData = e.data;
             con.equal('sub1 data', tData[0], 'I am subdata 1');
             con.equal('sub2 data', tData[1], 'ye ye subdata 2');
             con.equal('sub3 data', tData[2], 'understand subdata 3');

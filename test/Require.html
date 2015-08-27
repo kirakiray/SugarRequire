@@ -85,6 +85,14 @@
         r1._rEvent.on('chainend', function() {
             brtest.order(ordername, "data_chainend");
         });
+
+        var a1 = require('files/setData5');
+        a1.ready = function() {
+            con.equal('a1 require', window.wdata5, "IamData5");
+        };
+        a1._rEvent.on('chainend', function() {
+            con.equal('a1 chainend', 1, 1);
+        });
     });
 </script>
 
