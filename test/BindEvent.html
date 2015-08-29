@@ -289,6 +289,32 @@
 
         bindevent.trigger('haha', 'i am tdata');
     });
+
+    brtest.orderTest('ever one test', function(con) {
+        con.count('ever_one', 2);
+        var bindevent = new BindEvent();
+        bindevent.one('haha', function() {
+            con.order('ever_one');
+        });
+        bindevent.ever('haha');
+        bindevent.one('haha', function() {
+            con.order('ever_one');
+        });
+    });
+
+    brtest.orderTest('ever clone test', function(con) {
+        con.count('ever_clone_one', 2);
+        var bindevent = new BindEvent();
+        bindevent.one('haha', function() {
+            con.order('ever_clone_one');
+        });
+        bindevent.ever('haha');
+
+        var subE = bindevent.clone();
+        subE.on('haha', function() {
+            con.order('ever_clone_one');
+        });
+    });
 </script>
 
 </html>

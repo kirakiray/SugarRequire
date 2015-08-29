@@ -133,7 +133,8 @@
     //public class
     var BindEvent = function() {
         this._map = {};
-        this._sub = [];
+        this.sub = [];
+        this._ever = {};
     };
     BindEvent.fn = BindEvent.prototype;
 
@@ -141,38 +142,6 @@
     BindEvent.fn._get = function(eventName) {
         return this._map[eventName] || (this._map[eventName] = {
             eves: []
-        });
-    };
-
-    //注册事件
-    BindEvent.fn.on = function(eventName, callback, data) {
-        //获取事件数组
-        var evesObj = this._get(eventName);
-
-        //判断是否进入ever状态
-        var everData = evesObj.ever;
-        if (everData) {
-            var callObj = {
-                //bData: data,
-                data: everData.data,
-                name: eventName
-            };
-            if (everData.type == 1) {
-                //状态1为同步执行
-                callback(callObj, data);
-            } else if (everData.type == 2) {
-                //状态2为异步执行
-                nextTick(function() {
-                    callback(callObj, data);
-                });
-            }
-            return;
-        }
-
-        //添加事件
-        evesObj.eves.push({
-            data: data,
-            _call: callback
         });
     };
 
@@ -204,10 +173,56 @@
         }
     };
 
+    //on 和 one 内部使用的ever触发事件  返回值为是否retrun
+    var everOne = function(everData, eventName, callback, data) {
+        if (everData) {
+            var callObj = {
+                //bData: data,
+                data: everData.data,
+                name: eventName
+            };
+            if (everData.type == 1) {
+                //状态1为同步执行
+                callback(callObj, data);
+            } else if (everData.type == 2) {
+                //状态2为异步执行
+                nextTick(function() {
+                    callback(callObj, data);
+                });
+            }
+            return true;
+        }
+        return false;
+    };
+
+    //注册事件
+    BindEvent.fn.on = function(eventName, callback, data) {
+        //获取事件数组
+        var evesObj = this._get(eventName);
+
+        //即时激活事件
+        var isReturn = everOne(this._ever[eventName], eventName, callback, data);
+        if (isReturn) {
+            return;
+        }
+
+        //添加事件
+        evesObj.eves.push({
+            data: data,
+            _call: callback
+        });
+    };
+
     //注册一次性事件
     BindEvent.fn.one = function(eventName, callback, data) {
         //获取事件组对象
         var evesObj = this._get(eventName);
+
+        //即时激活事件
+        var isReturn = everOne(this._ever[eventName], eventName, callback, data);
+        if (isReturn) {
+            return;
+        }
 
         //添加事件
         evesObj.eves.push({
@@ -221,11 +236,6 @@
     BindEvent.fn.trigger = function(eventName, tData) {
         //获取事件组对象
         var evesObj = this._get(eventName);
-
-        //如果设置ever，则屏蔽此方法
-        if (evesObj.ever) {
-            //return;
-        }
 
         //优先执行first call
         var firstEvent = evesObj._first;
@@ -252,6 +262,12 @@
         //重置事件数组
         evesObj.eves = newEventGroup;
 
+        //触发克隆对象
+        var subbindevent = this.sub;
+        each(subbindevent, function(e) {
+            e.trigger(eventName, tData);
+        });
+
         //最后执行last call
         var lastEvent = evesObj._last;
         lastEvent && lastEvent._call({
@@ -259,32 +275,26 @@
             data: tData,
             name: eventName
         }, lastEvent.data);
-
-        //触发克隆对象
-        var subbindevent = this._sub;
-        each(subbindevent, function(e) {
-            e.trigger(eventName, tData);
-        });
     };
 
     //永久性触发事件
     BindEvent.fn.ever = function(eventName, data, sync) {
-        //获取事件组对象
-        var evesObj = this._get(eventName);
-        //设定即时运行
+        var everObject = {};
         if (sync) {
-            evesObj.ever = {
+            everObject = {
                 //状态1为同步执行
                 type: 1,
                 data: data
             };
         } else {
-            evesObj.ever = {
+            everObject = {
                 //状态2为异步执行
                 type: 2,
                 data: data
             };
         }
+        //加入ever数据
+        this._ever[eventName] = everObject;
         //先触发一次相应事件
         this.trigger(eventName, data);
         //清除事件
@@ -314,12 +324,14 @@
     //克隆对象（父对象触发事件，克隆对象也会触发相应事件；克隆对象触发事件，不会影响父对象）
     BindEvent.fn.clone = function() {
         var subEvent = new BindEvent();
-        this._sub.push(subEvent);
+        //继承ever数据
+        subEvent._ever = create(this._ever);
+        this.sub.push(subEvent);
         return subEvent;
     };
 
     //分散集合器
-    //只有当所有子方法运行，并且init后才会触发ready事件
+    //只有当所有子方法运行，并且init后才会触发chainend事件
     //继承BindEvent
     var GatherEvent = function(chainEndName) {
         BindEvent.apply(this, arguments);
@@ -369,13 +381,13 @@
             this._origin = this._rEvent = new GatherEvent();
             this._origin.init();
         }
+        var _this = this;
         //完成ready后进行subFun的运行
         var subFun = this._origin.create();
         this._rEvent.last('ready', function() {
             subFun();
         });
 
-        var _this = this;
         this._rEvent.on('ready', function(e) {
             _this.ready.apply(this, e.data);
         });
@@ -446,16 +458,16 @@
             var tempM = baseResources.tempM;
             //判断value类型进行剥取模块内容
             var tempValueType = getType(tempM.value);
-            var content;
+            //模块结构 
+            var modules = {
+                exports: {}
+            };
             switch (tempValueType) {
                 case "function":
-                    //模块结构 
-                    var modules = {
-                        exports: {}
-                    };
 
                     //是否有使用过内部require
                     var hasUseRequire = false;
+                    var isRequireEnd = false;
 
                     //首层require集合器
                     var firstRequireGather = new GatherEvent('firstRequireEnd');
@@ -467,11 +479,14 @@
                         //继承使用require
                         var requireObj = R.require.apply({}, arguments);
 
-                        //生成子集合器
-                        var subRequire = firstRequireGather.create();
+                        //判断是否结束子层require
+                        if (!isRequireEnd) {
+                            //生成子集合器
+                            var subRequire = firstRequireGather.create();
 
-                        //链完成后触发子集合器
-                        requireObj._rEvent.on('chainend', subRequire);
+                            //链完成后触发子集合器
+                            requireObj._rEvent.on('chainend', subRequire);
+                        }
 
                         //返回值
                         return requireObj;
@@ -481,9 +496,12 @@
                         //没有使用内部require
                         //优先使用返回值
                         reValue && (modules.exports = reValue);
-                        content = modules;
+
+                        //设置结束
+                        isRequireEnd = true;
 
                         //永久激活模块
+                        scriptData.status = "done";
                         scriptData.event.ever('done', modules.exports);
                     } else {
                         //使用了内部的require
@@ -492,40 +510,68 @@
 
                         //集合完毕后永久激活模块
                         firstRequireGather.on('firstRequireEnd', function() {
+                            //设置结束
+                            isRequireEnd = true;
+
+                            //修正数据
+                            scriptData.status = "done";
                             scriptData.event.ever('done', modules.exports);
                         });
                     }
                     break;
                 default:
                     //模块数据永久done
+                    scriptData.status = "done";
                     scriptData.event.ever('done', tempM.value);
-                    content = {
-                        exports: tempM.value
-                    };
+                    modules.exports = tempM.value
                     break;
             };
             //赋予值
-            scriptData.content = content;
+            scriptData.content = modules;
+        },
+        //defer模块处理装置（函数）
+        deferBrain: function(scriptData) {
+            //获取子event对象 
+            var eventArr = scriptData.event.sub;
+
+            //对defer延迟执行
+            each(eventArr, function(e) {
+                scriptData.content(function(succeedData) {
+                    //resolve
+                    e.trigger('done', succeedData);
+                }, function(errorData) {
+                    //reject
+                    e.trigger('error', errorData);
+                });
+            });
+
+            //清空子事件对象
+            scriptData.event.sub = [];
         },
         //根据temM获取相应内容
         mProcess: function(scriptData) {
             //获取事件对象
             var scriptEvent = scriptData.event;
+            var tempM = baseResources.tempM;
             //根据type获取值
-            switch (baseResources.tempM.type) {
+            switch (tempM.type) {
                 case "define":
                     //修正数据
                     scriptData.type = "define";
                     R.setDefine(scriptData);
                     break;
                 case "defer":
-                    //修正数据
+                    //修正数据(defer永远不会进入done状态，只会在succeed加载完成状态)
                     scriptData.type = "defer";
+                    //设置defer模块内容
+                    scriptData.content = tempM.value;
+                    //中转defer逻辑
+                    R.deferBrain(scriptData);
                     break;
                 default:
                     //修正数据
                     scriptData.type = "file";
-                    scriptData.status = "ready";
+                    scriptData.status = "done";
                     //普通文件永久性触发done
                     scriptEvent.ever('done');
                     break;
@@ -561,7 +607,7 @@
                     //wait表示等待中     succeed表示script加载完毕（并不代表可立即执行）     error表示加载错误      done表示充分准备完毕加载完成   
                     status: "wait",
                     //挂载对象
-                    event: new GatherEvent('done'),
+                    event: new BindEvent(),
                     //标签
                     //script: "",
                     //类型 file普通文件  define模块  defer模块
@@ -579,12 +625,30 @@
                     //中转加工逻辑
                     R.mProcess(scriptData);
                 });
+
+                //当done完毕后清除所有sub数据 
+                scriptData.event.last('done', function() {
+                    scriptData.event.sub = [];
+                });
+
+                //返回事件对象
+                return scriptData.event.clone();
             } else {
                 scriptData = dataMap[url];
+                if (!scriptData.type) {
+                    //返回克隆对象
+                    return scriptData.event.clone();
+                } else if (scriptData.type == "defer") {
+                    nextTick(function() {
+                        //中转defer逻辑
+                        R.deferBrain(scriptData);
+                    });
+                    return scriptData.event.clone();
+                } else {
+                    //返回事件对象
+                    return scriptData.event;
+                }
             }
-
-            //返回事件对象
-            return scriptData.event;
         },
         //组载入文件
         groupScript: function(urls) {
@@ -593,7 +657,7 @@
                 var scriptEvent = R.scriptAgent(e);
                 var subFun = gatherFun.create();
                 //scriptEvent.on('succeed', function(e2) {
-                scriptEvent.on('done', function(e2) {
+                scriptEvent.one('done', function(e2) {
                     var tData = e2.data;
                     //触发loading函数
                     gatherFun.trigger('loading', tData);
@@ -657,4 +721,5 @@
     Global.GatherEvent = GatherEvent;
     Global.Require = Require;
     Global.R = R;
+    Global.baseResources = baseResources;
 })(window);

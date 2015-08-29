@@ -46,10 +46,10 @@
         groupevent.on('loading', function(e) {
             console.log(e);
         });
-        groupevent.on('chainend', function(e) {
-            con.equal('chainend 1', window.wdata1, "IamData1");
-            con.equal('chainend 2', window.wdata2, "IamData2");
-            con.equal('chainend 3', window.wdata3, "IamData3");
+        groupevent.on('allloadend', function(e) {
+            con.equal('allloadend 1', window.wdata1, "IamData1");
+            con.equal('allloadend 2', window.wdata2, "IamData2");
+            con.equal('allloadend 3', window.wdata3, "IamData3");
         });
     });
 

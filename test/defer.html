@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>defer test</title>
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <link href="brtest.css" type="text/css" rel="stylesheet" />
+    <script src="../src/sr.js"></script>
+</head>
+
+<body>
+
+</body>
+<script src="brtest.js"></script>
+<script>
+    brtest.test('defer test', function(con) {
+        var scrEvent1 = R.scriptAgent('files/defer1');
+        scrEvent1.one('done', function(e) {
+            con.equal('defer1 test', e.data, "IamResolveData");
+        });
+
+        var scrEvent2 = R.scriptAgent('files/defer2');
+        scrEvent2.one('done', function(e) {
+            con.equal('defer2 test', e.data, "IamResolveData2");
+        });
+
+        var scrEvent3 = R.scriptAgent('files/defer3');
+        scrEvent3.one('done', function(e) {
+            con.equal('defer3 test', e.data, "IamResolveData3-0");
+        });
+
+        var scrEvent4 = R.scriptAgent('files/defer3');
+        scrEvent4.one('done', function(e) {
+            con.equal('defer3 test2', e.data, "IamResolveData3-1");
+            setTimeout(function() {
+                var scrEvent5 = R.scriptAgent('files/defer3');
+                scrEvent5.one('done', function(e2) {
+                    con.equal('defer3 test3', e2.data, "IamResolveData3-2");
+                });
+            }, 100);
+        });
+    });
+</script>
+
+</html>

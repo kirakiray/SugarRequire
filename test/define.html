@@ -56,7 +56,10 @@
     });
     brtest.test('relation require', function(con) {
         require('files/relateDefine2').done(function(rData) {
-            console.log(rData);
+            con.equal('rDefine val', rData.val, 'relateDefineData222');
+            con.equal('rDefine sub data1 val', rData.data1.val, 'relateDefineData');
+            con.equal('rDefine sub data1 sub d1Data val', rData.data1.d1Data.val, 'define1');
+            con.equal('rDefine sub data2 val', rData.data2.val, 'IamDefine2');
         });
     })
 </script>
