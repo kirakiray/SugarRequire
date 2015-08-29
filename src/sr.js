@@ -427,6 +427,10 @@
         });
         return this;
     };
+    Require.fn.post = function(data) {
+        this.data = data;
+        return this;
+    };
     Require.fn.require = function() {
         var urls = transToArray(arguments);
         var subRequire = new Require(urls, this._origin);
@@ -536,7 +540,16 @@
 
             //对defer延迟执行
             each(eventArr, function(e) {
-                scriptData.content(function(succeedData) {
+                /*scriptData.content(function(succeedData) {
+                    //resolve
+                    e.trigger('done', succeedData);
+                }, function(errorData) {
+                    //reject
+                    e.trigger('error', errorData);
+                });*/
+                scriptData.content.call({
+                    data: e.data
+                }, function(succeedData) {
                     //resolve
                     e.trigger('done', succeedData);
                 }, function(errorData) {
@@ -651,12 +664,17 @@
             }
         },
         //组载入文件
-        groupScript: function(urls) {
+        groupScript: function(urls, requireObj) {
             var gatherFun = new GatherEvent('allloadend');
             each(urls, function(e) {
+                //获取相对资源的事件实例
                 var scriptEvent = R.scriptAgent(e);
+
+                //挂载自定义数据
+                requireObj.data && (scriptEvent.data = requireObj.data);
+
+                //子函数触发
                 var subFun = gatherFun.create();
-                //scriptEvent.on('succeed', function(e2) {
                 scriptEvent.one('done', function(e2) {
                     var tData = e2.data;
                     //触发loading函数
@@ -672,7 +690,7 @@
         splitter: function(requireObj) {
             //获取urls
             var urls = requireObj._urls;
-            var groupScriptGatherFun = R.groupScript(urls);
+            var groupScriptGatherFun = R.groupScript(urls, requireObj);
             groupScriptGatherFun.on('allloadend', function(e) {
                 requireObj._rEvent.trigger('ready', e.data);
                 //获取下一组urls并载入
@@ -711,6 +729,8 @@
 
     //init
     sr.require = R.require;
+    sr.define = R.define;
+    sr.defer = R.defer;
     Global.sr = sr;
     (!Global.require) && (Global.require = R.require);
     (!Global.define) && (Global.define = R.define);

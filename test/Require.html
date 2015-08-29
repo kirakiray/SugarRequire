@@ -42,7 +42,7 @@
     });
 
     brtest.test("groupScript test", function(con) {
-        var groupevent = R.groupScript(['files/setData1', 'files/setData2', 'files/setData3']);
+        var groupevent = R.groupScript(['files/setData1', 'files/setData2', 'files/setData3'],{});
         groupevent.on('loading', function(e) {
             console.log(e);
         });

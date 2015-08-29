@@ -41,6 +41,41 @@
             }, 100);
         });
     });
+
+    brtest.test('require defer', function(con) {
+        require('files/defer1').done(function(deferData) {
+            con.equal('defer1 data', deferData, 'IamResolveData');
+            //console.log(deferData);
+        });
+
+        require('files/defer2', 'files/defer1')
+            .done(function(deferdata2, deferdata1) {
+                con.equal('defer2 data', deferdata2, 'IamResolveData2');
+                con.equal('defer1 data 2', deferdata1, 'IamResolveData');
+                //console.log(deferdata2);
+            })
+            .require('files/defer3')
+            .done(function(deferdata3) {
+                con.equal('defer3 data', deferdata3, "IamResolveData3-3");
+            });
+    });
+
+    brtest.test('require defer data test', function(con) {
+        var r1 = require('files/defer4').done(function(d4Data) {
+            con.equal('defer4 data1', d4Data, 'Iamdefer4 ------custom data 4');
+        });
+        r1.data = "------custom data 4";
+
+        require('files/defer4').done(function(d4Data) {
+            con.equal('defer4 data2', d4Data, 'Iamdefer4 custom data haha');
+            
+            //second
+            require('files/defer4').done(function(d4Data2) {
+                con.equal('defer4 data3', d4Data2, 'Iamdefer4 custom data haha22222');
+            }).post('custom data haha22222');
+            
+        }).post('custom data haha');
+    });
 </script>
 
 </html>

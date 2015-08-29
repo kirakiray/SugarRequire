@@ -482,11 +482,18 @@
         var varnameStrLen = varnameStr.length,
             valueStrLen = valueStr.length;
 
+        var bigStrLen = "";
+        if (varnameStrLen > valueStrLen) {
+            bigStrLen = varnameStrLen;
+        } else {
+            bigStrLen = valueStrLen;
+        }
+
         var tempStr = "",
             errStr = "",
             varafterStr = "";
 
-        for (var i = 0; i < varnameStrLen; i++) {
+        for (var i = 0; i < bigStrLen; i++) {
             tempStr += varnameStr[i];
             if (valueStr.search(tempStr) == 0) {
                 //每次获取正确对应字符就存储起来
@@ -788,11 +795,11 @@
                             //先记录递增前的id 
                             orderObj._runid++;
                             //if (orderObj._runid == orderID) {
-                                shunxu = true;
+                            shunxu = true;
                             //} else {
-                                //适配+1还是不行，就是错的，并且跳到这个id，并且重置前面id错误的line
-                                //shunxu = false;
-                                orderObj._runid = orderID;
+                            //适配+1还是不行，就是错的，并且跳到这个id，并且重置前面id错误的line
+                            //shunxu = false;
+                            orderObj._runid = orderID;
                             //}
                             for (var i in orderObj) {
                                 if (i == "_runid") {
