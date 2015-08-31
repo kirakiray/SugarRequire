@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>path test</title>
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <link href="brtest.css" type="text/css" rel="stylesheet" />
+    <script src="../src/sr.js"></script>
+</head>
+
+<body>
+
+</body>
+<script src="brtest.js"></script>
+<script>
+    sr.config({
+        baseUrl: "files",
+        paths: {
+            "d1": "defer1"
+        }
+    });
+    /*brtest.test("baseUrl and paths test", function(con) {
+        require('defer1').done(function(d1data) {
+            con.equal('baseUrl test', 'IamResolveData', d1data);
+        });
+        require('d1').done(function(d1data) {
+            con.equal('the Two test', 'IamResolveData', d1data);
+        });
+    });*/
+
+    brtest.test("relate path test", function(con) {
+        require('subfile/subdefine1').done(function(subdefer1data) {
+            console.log(subdefer1data);
+        });
+    });
+</script>
+
+</html>

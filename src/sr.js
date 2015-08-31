@@ -10,12 +10,46 @@
         baseUrl: "",
         dataMap: dataMap,
         //临时挂起的模块对象
-        tempM: {},
-        //版本号
-        version: "sugarRequire 2.0",
+        tempM: {}
+        //sr : {}
     };
-    //存放插件方法的统一对象
-    var sr = {}
+    //当前html的dirname
+    var rootdir = "";
+
+    //外部用统一对象
+    var sr = {
+        //设置基础配置方法
+        config: function(data) {
+            /*var data = {
+                //根目录
+                baseUrl: "",
+                //快捷映射目录
+                paths: {}
+            };*/
+            //配置baseurl
+            baseResources.baseUrl = data.baseUrl;
+            //配置paths
+            extend(paths, data.paths);
+        },
+        //同步载入模块数据
+        use: function(url) {
+
+        },
+        //判断是否存在模块，并返回模块对应数据
+        has: function(url) {
+
+        },
+        //删除对应url数据
+        delete: function(url) {
+
+        },
+        //开发扩展用函数
+        extend: function(fun) {
+            fun(baseResources, R);
+        },
+        //版本号
+        version: "sugarRequire 2.0"
+    };
 
     //COMMON
     var nextTickArr = [],
@@ -85,7 +119,7 @@
             } else {
                 return function(arr, fun) {
                     for (var i = 0, len = arr.length; i < len; i++) {
-                        fun(arr[i], i);
+                        reMap.push(fun(arr[i], i));
                     };
                 };
             }
@@ -103,11 +137,13 @@
             return def;
         },
         /**
-            给字符串去掉.js后缀
+            给字符串去掉.js等后缀
             @param {string} value 传入的文件名（有无带.js后缀都可以）
             @return {string} 返回去掉.js后缀的文件名
         */
         removeJS = function(value) {
+            //去掉后缀
+            value = value.replace(/\?.+$/, "");
             return value.replace(/.js$/g, "");
         },
         /**
@@ -127,6 +163,17 @@
                 return false;
             }
             return true;
+        },
+        dirname = function(filename) {
+            var redirname = "";
+            var filenameArr = filename.split('/');
+            var dirnameLastId = filenameArr.length - 1;
+            each(filenameArr, function(e, i) {
+                if (dirnameLastId > i) {
+                    redirname += e + '/';
+                }
+            });
+            return redirname;
         };
 
 
@@ -382,6 +429,7 @@
             this._origin.init();
         }
         var _this = this;
+
         //完成ready后进行subFun的运行
         var subFun = this._origin.create();
         this._rEvent.last('ready', function() {
@@ -397,6 +445,9 @@
         this.fail(function(data) {
             _this.error(data);
         });
+
+        //记录链上公用数据
+        this.pub = {};
 
         //记录需要加载的资源
         this._urls = urls;
@@ -435,6 +486,7 @@
         var urls = transToArray(arguments);
         var subRequire = new Require(urls, this._origin);
         this._subRequire.push(subRequire);
+        subRequire.pub = this.pub;
         return subRequire;
     };
 
@@ -450,9 +502,45 @@
         return script;
     };
 
-    //修正目录的相对位置，根目录等
-    var getByPath = function(url) {
+    //修正上级目录字符串 
+    var removeParentPath = function(url) {
+        var urlArr = url.split(/\//g);
+        var newArr = [];
+        each(urlArr, function(e) {
+            if (e == '..') {
+                newArr.pop();
+                return;
+            }
+            newArr.push(e);
+        });
+        return newArr.join('/');
+    };
 
+    //修正目录的相对位置，根目录等
+    //引用url和相对目录
+    var getPath = function(value, relateDir) {
+        //判断是否当前文件目录
+        var relateNowFileArr = value.split(/^.\//);
+        //获取后缀
+        var suffix = value.match(/\?.+$/g) || [""];
+        if (relateNowFileArr.length >= 2) {
+            //如果为两位数则是相对当前文件目录
+            var rePath = relateDir + concatJS(removeJS(relateNowFileArr[1])) + suffix[0];
+            //获取相对定位
+            rePath = rePath.replace(rootdir, "");
+            //去除上级目录定位(../)
+            rePath = removeParentPath(rePath);
+            return rePath;
+        } else {
+            //相对根目录
+            var path = baseResources.paths[value] || value;
+            //带协议的文件
+            if ((/.+:\/\//g).test(path)) {
+                return path;
+            }
+            var rePath = baseResources.baseUrl.concat("/" + path);
+            return concatJS(removeJS(rePath)) + suffix[0];
+        }
     };
 
     //main
@@ -468,7 +556,6 @@
             };
             switch (tempValueType) {
                 case "function":
-
                     //是否有使用过内部require
                     var hasUseRequire = false;
                     var isRequireEnd = false;
@@ -476,12 +563,17 @@
                     //首层require集合器
                     var firstRequireGather = new GatherEvent('firstRequireEnd');
 
-                    var reValue = tempM.value(function() {
+                    var reValue = tempM.value.call({
+                        FILE: scriptData.script.src,
+                    }, function() {
                         //设置使用过内部require
                         hasUseRequire = true;
 
                         //继承使用require
                         var requireObj = R.require.apply({}, arguments);
+
+                        //设置file链接
+                        requireObj.pub._dir = dirname(scriptData.script.src);
 
                         //判断是否结束子层require
                         if (!isRequireEnd) {
@@ -496,13 +588,13 @@
                         return requireObj;
                     }, modules.exports, modules);
 
+                    //设置结束
+                    isRequireEnd = true;
+
                     if (!hasUseRequire) {
                         //没有使用内部require
                         //优先使用返回值
                         reValue && (modules.exports = reValue);
-
-                        //设置结束
-                        isRequireEnd = true;
 
                         //永久激活模块
                         scriptData.status = "done";
@@ -514,9 +606,6 @@
 
                         //集合完毕后永久激活模块
                         firstRequireGather.on('firstRequireEnd', function() {
-                            //设置结束
-                            isRequireEnd = true;
-
                             //修正数据
                             scriptData.status = "done";
                             scriptData.event.ever('done', modules.exports);
@@ -540,15 +629,15 @@
 
             //对defer延迟执行
             each(eventArr, function(e) {
-                /*scriptData.content(function(succeedData) {
-                    //resolve
-                    e.trigger('done', succeedData);
-                }, function(errorData) {
-                    //reject
-                    e.trigger('error', errorData);
-                });*/
                 scriptData.content.call({
+                    FILE: scriptData.script.src,
                     data: e.data
+                }, function() {
+                    //继承使用require
+                    var requireObj = R.require.apply({}, arguments);
+                    //设置file链接
+                    requireObj.pub._dir = dirname(scriptData.script.src);
+                    return requireObj;
                 }, function(succeedData) {
                     //resolve
                     e.trigger('done', succeedData);
@@ -571,6 +660,7 @@
                 case "define":
                     //修正数据
                     scriptData.type = "define";
+                    //设置模块
                     R.setDefine(scriptData);
                     break;
                 case "defer":
@@ -594,7 +684,7 @@
         },
         //加载script用函数
         loadScript: function(url, callback) {
-            var scriptTag = getScriptTag(concatJS(url));
+            var scriptTag = getScriptTag(url);
             scriptTag.onload = function() {
                 callback({
                     status: "succeed",
@@ -610,7 +700,7 @@
             windowHead.appendChild(scriptTag);
         },
         //loadScript前的代理
-        scriptAgent: function(url) {
+        scriptAgent: function(url, requireObj) {
             var scriptData = "";
 
             //判空并填充相应数据
@@ -628,12 +718,15 @@
                     //模块内容
                     //content : ""
                 }
-                R.loadScript(removeJS(url), function(sData) {
+                R.loadScript(url, function(sData) {
                     //修正数据
                     extend(scriptData, sData);
 
                     //触发加载完成事件
                     scriptData.event.ever(sData.status);
+
+                    //临时挂载scriptData
+                    baseResources.tempM.scriptData = scriptData;
 
                     //中转加工逻辑
                     R.mProcess(scriptData);
@@ -667,8 +760,10 @@
         groupScript: function(urls, requireObj) {
             var gatherFun = new GatherEvent('allloadend');
             each(urls, function(e) {
+                //根据地址获取固定地址
+                var url = getPath(e, requireObj.pub._dir);
                 //获取相对资源的事件实例
-                var scriptEvent = R.scriptAgent(e);
+                var scriptEvent = R.scriptAgent(url, requireObj);
 
                 //挂载自定义数据
                 requireObj.data && (scriptEvent.data = requireObj.data);
@@ -735,6 +830,8 @@
     (!Global.require) && (Global.require = R.require);
     (!Global.define) && (Global.define = R.define);
     (!Global.defer) && (Global.defer = R.defer);
+    //rootdir初始化
+    rootdir = dirname(location.href);
 
     //test
     Global.BindEvent = BindEvent;
@@ -742,4 +839,5 @@
     Global.Require = Require;
     Global.R = R;
     Global.baseResources = baseResources;
+    Global.rootdir = rootdir;
 })(window);

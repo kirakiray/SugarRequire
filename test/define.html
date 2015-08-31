@@ -18,21 +18,21 @@
         title: "define Test"
     });
     brtest.test('define1', function(con) {
-        var scriptEvent1 = R.scriptAgent('files/define1');
+        var scriptEvent1 = R.scriptAgent('files/define1.js');
         scriptEvent1.on('done', function(e) {
             var data = e.data;
             con.equal('object test one', data, {
                 val: "define1"
             });
         });
-        var scriptEvent2 = R.scriptAgent('files/define2');
+        var scriptEvent2 = R.scriptAgent('files/define2.js');
         scriptEvent2.on('done', function(e) {
             var data = e.data;
             con.equal('object test two', data, {
                 val: "IamDefine2"
             });
         });
-        var scriptEvent3 = R.scriptAgent('files/define3');
+        var scriptEvent3 = R.scriptAgent('files/define3.js');
         scriptEvent3.on('done', function(e) {
             var data = e.data;
             con.equal('object test 3', data, {

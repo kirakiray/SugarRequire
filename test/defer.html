@@ -15,26 +15,26 @@
 <script src="brtest.js"></script>
 <script>
     brtest.test('defer test', function(con) {
-        var scrEvent1 = R.scriptAgent('files/defer1');
+        var scrEvent1 = R.scriptAgent('files/defer1.js');
         scrEvent1.one('done', function(e) {
             con.equal('defer1 test', e.data, "IamResolveData");
         });
 
-        var scrEvent2 = R.scriptAgent('files/defer2');
+        var scrEvent2 = R.scriptAgent('files/defer2.js');
         scrEvent2.one('done', function(e) {
             con.equal('defer2 test', e.data, "IamResolveData2");
         });
 
-        var scrEvent3 = R.scriptAgent('files/defer3');
+        var scrEvent3 = R.scriptAgent('files/defer3.js');
         scrEvent3.one('done', function(e) {
             con.equal('defer3 test', e.data, "IamResolveData3-0");
         });
 
-        var scrEvent4 = R.scriptAgent('files/defer3');
+        var scrEvent4 = R.scriptAgent('files/defer3.js');
         scrEvent4.one('done', function(e) {
             con.equal('defer3 test2', e.data, "IamResolveData3-1");
             setTimeout(function() {
-                var scrEvent5 = R.scriptAgent('files/defer3');
+                var scrEvent5 = R.scriptAgent('files/defer3.js');
                 scrEvent5.one('done', function(e2) {
                     con.equal('defer3 test3', e2.data, "IamResolveData3-2");
                 });
@@ -66,15 +66,16 @@
         });
         r1.data = "------custom data 4";
 
-        require('files/defer4').done(function(d4Data) {
-            con.equal('defer4 data2', d4Data, 'Iamdefer4 custom data haha');
-            
-            //second
-            require('files/defer4').done(function(d4Data2) {
+        require('files/defer4')
+            .done(function(d4Data) {
+                con.equal('defer4 data2', d4Data, 'Iamdefer4 custom data haha');
+            })
+            .post('custom data haha')
+            .require('files/defer4')
+            .done(function(d4Data2) {
                 con.equal('defer4 data3', d4Data2, 'Iamdefer4 custom data haha22222');
-            }).post('custom data haha22222');
-            
-        }).post('custom data haha');
+            })
+            .post('custom data haha22222');
     });
 </script>
 

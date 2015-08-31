@@ -19,22 +19,22 @@
     });
 
     brtest.test('loadscript test', function(con) {
-        R.loadScript('files/setData1', function() {
+        R.loadScript('files/setData1.js', function() {
             con.equal('loadscript data 1', window.wdata1, "IamData1");
         });
     });
 
     brtest.test('scriptAgent same file test', function(con) {
-        var agentEvent = R.scriptAgent('files/setData2');
+        var agentEvent = R.scriptAgent('files/setData2.js');
         agentEvent.on('succeed', function() {
             con.equal('scriptAgent first', window.wdata2, "IamData2");
         });
 
-        var agentEvent2 = R.scriptAgent('files/setData2');
+        var agentEvent2 = R.scriptAgent('files/setData2.js');
         agentEvent2.on('succeed', function() {
             con.equal('scriptAgent second', window.wdata2, "IamData2");
 
-            var agentEvent3 = R.scriptAgent('files/setData2');
+            var agentEvent3 = R.scriptAgent('files/setData2.js');
             agentEvent3.on('succeed', function() {
                 con.equal('scriptAgent three', window.wdata2, "IamData2");
             });
@@ -42,7 +42,9 @@
     });
 
     brtest.test("groupScript test", function(con) {
-        var groupevent = R.groupScript(['files/setData1', 'files/setData2', 'files/setData3'],{});
+        var groupevent = R.groupScript(['files/setData1', 'files/setData2', 'files/setData3'], {
+            pub: {}
+        });
         groupevent.on('loading', function(e) {
             console.log(e);
         });
