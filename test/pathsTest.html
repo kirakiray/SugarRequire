@@ -20,18 +20,27 @@
             "d1": "defer1"
         }
     });
-    /*brtest.test("baseUrl and paths test", function(con) {
+    brtest.test("baseUrl and paths test", function(con) {
         require('defer1').done(function(d1data) {
             con.equal('baseUrl test', 'IamResolveData', d1data);
         });
         require('d1').done(function(d1data) {
             con.equal('the Two test', 'IamResolveData', d1data);
         });
-    });*/
+    });
 
     brtest.test("relate path test", function(con) {
-        require('subfile/subdefine1').done(function(subdefer1data) {
-            console.log(subdefer1data);
+        require('subfile/subdefine1').done(function(subdefine1data) {
+            con.equal('subdefine1data.d3', subdefine1data.d3.val, "IamModule3");
+        });
+        require('subfile/subdefer1').done(function(subdefer1data) {
+            con.equal('subdefer1 test', subdefer1data, {
+                "subdefine1data": {
+                    "d3": {
+                        "val": "IamModule3"
+                    }
+                }
+            });
         });
     });
 </script>

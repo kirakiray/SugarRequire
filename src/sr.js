@@ -11,7 +11,6 @@
         dataMap: dataMap,
         //临时挂起的模块对象
         tempM: {}
-        //sr : {}
     };
     //当前html的dirname
     var rootdir = "";
@@ -32,20 +31,37 @@
             extend(paths, data.paths);
         },
         //同步载入模块数据
+        //只能使用绝对路径（相对baseUrl）
+        //只能返回载入完成的define模块
         use: function(url) {
-
+            var dataObj = dataMap[getPath(url)];
+            if (dataObj && dataObj.status == 'done' && dataObj.type == "define") {
+                return dataObj.content.exports;
+            }
         },
         //判断是否存在模块，并返回模块对应数据
+        //只能使用绝对路径（相对baseUrl）
+        //has有返回数据并不代表完全加载完成
         has: function(url) {
-
+            var dataObj = dataMap[getPath(url)];
+            if (dataObj) {
+                return {
+                    exports: dataObj.content.exports,
+                    status: dataObj.status,
+                    type: dataObj.type
+                };
+            }
         },
         //删除对应url数据
         delete: function(url) {
-
+            var aburl = getPath(url);
+            var dataObj = dataMap[aburl];
+            dataObj && dataObj.script.remove();
+            delete dataMap[aburl];
         },
         //开发扩展用函数
         extend: function(fun) {
-            fun(baseResources, R);
+            fun(baseResources, R, Require);
         },
         //版本号
         version: "sugarRequire 2.0"
@@ -532,13 +548,14 @@
             rePath = removeParentPath(rePath);
             return rePath;
         } else {
+            var baseUrl = baseResources.baseUrl;
             //相对根目录
             var path = baseResources.paths[value] || value;
             //带协议的文件
             if ((/.+:\/\//g).test(path)) {
                 return path;
             }
-            var rePath = baseResources.baseUrl.concat("/" + path);
+            var rePath = baseUrl ? baseUrl.concat("/" + path) : path;
             return concatJS(removeJS(rePath)) + suffix[0];
         }
     };
