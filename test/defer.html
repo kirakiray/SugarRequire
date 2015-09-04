@@ -77,6 +77,18 @@
             })
             .post('custom data haha22222');
     });
+
+    brtest.test('hand test', function(con) {
+        require('files/defer1')
+            .done(function(defer1data) {
+                this.hand(defer1data);
+                con.equal('defer1data', defer1data, 'IamResolveData');
+            })
+            .require('files/defer4')
+            .done(function(defer4data) {
+                con.equal('handdata', defer4data, 'Iamdefer4 IamResolveData');
+            });
+    });
 </script>
 
 </html>

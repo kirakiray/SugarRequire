@@ -46,7 +46,7 @@
             var dataObj = dataMap[getPath(url)];
             if (dataObj) {
                 return {
-                    exports: dataObj.content.exports,
+                    exports: dataObj.content && dataObj.content.exports,
                     status: dataObj.status,
                     type: dataObj.type
                 };
@@ -62,6 +62,10 @@
         //开发扩展用函数
         extend: function(fun) {
             fun(baseResources, R, Require);
+        },
+        //出现错误触发的函数 
+        error: function(err) {
+            console.log(err);
         },
         //版本号
         version: "sugarRequire 2.0"
@@ -171,15 +175,9 @@
             return value.concat('.js');
         },
         /*
-            判断对象是否是空对象
-            @param {object} obj 传入的对象
+            获取当前目录路径
+            @param {string} filename 传入当前文件的url
         */
-        isEmpty = function(obj) {
-            for (var i in obj) {
-                return false;
-            }
-            return true;
-        },
         dirname = function(filename) {
             var redirname = "";
             var filenameArr = filename.split('/');
@@ -476,9 +474,10 @@
     Require.fn.error = emptyFun;
     Require.fn.loading = emptyFun;
     Require.fn.done = function(fun) {
+        var _this = this;
         this._rEvent.on('ready', function(e) {
             //fun(e.data);
-            fun.apply(this, e.data);
+            fun.apply(_this, e.data);
         });
         return this;
     };
@@ -497,6 +496,11 @@
     Require.fn.post = function(data) {
         this.data = data;
         return this;
+    };
+    Require.fn.hand = function(data) {
+        each(this._subRequire, function(e) {
+            e.data = data;
+        });
     };
     Require.fn.require = function() {
         var urls = transToArray(arguments);
@@ -523,7 +527,7 @@
         var urlArr = url.split(/\//g);
         var newArr = [];
         each(urlArr, function(e) {
-            if (e == '..') {
+            if (e == '..' && newArr.length && (newArr.slice(-1)[0] != "..")) {
                 newArr.pop();
                 return;
             }
@@ -571,6 +575,8 @@
             var modules = {
                 exports: {}
             };
+            //赋予值
+            scriptData.content = modules;
             switch (tempValueType) {
                 case "function":
                     //是否有使用过内部require
@@ -632,12 +638,10 @@
                 default:
                     //模块数据永久done
                     scriptData.status = "done";
-                    scriptData.event.ever('done', tempM.value);
                     modules.exports = tempM.value
+                    scriptData.event.ever('done', tempM.value);
                     break;
             };
-            //赋予值
-            scriptData.content = modules;
         },
         //defer模块处理装置（函数）
         deferBrain: function(scriptData) {
@@ -672,6 +676,22 @@
             //获取事件对象
             var scriptEvent = scriptData.event;
             var tempM = baseResources.tempM;
+
+            //设置模块id
+            if (tempM) {
+                var name = tempM.name;
+                switch (getType(name)) {
+                    case "array":
+                        each(name, function(e) {
+                            dataMap[e] = scriptData;
+                        });
+                        break;
+                    case "string":
+                        dataMap[name] = scriptData;
+                        break;
+                }
+            }
+
             //根据type获取值
             switch (tempM.type) {
                 case "define":
@@ -722,12 +742,13 @@
 
             //判空并填充相应数据
             if (!dataMap[url]) {
+                var scriptEvent = new BindEvent()
                 scriptData = dataMap[url] = {
                     //加载状态
                     //wait表示等待中     succeed表示script加载完毕（并不代表可立即执行）     error表示加载错误      done表示充分准备完毕加载完成   
                     status: "wait",
                     //挂载对象
-                    event: new BindEvent(),
+                    event: scriptEvent,
                     //标签
                     //script: "",
                     //类型 file普通文件  define模块  defer模块
@@ -740,43 +761,64 @@
                     extend(scriptData, sData);
 
                     //触发加载完成事件
-                    scriptData.event.ever(sData.status);
+                    scriptEvent.ever(sData.status);
 
-                    //临时挂载scriptData
-                    baseResources.tempM.scriptData = scriptData;
-
-                    //中转加工逻辑
-                    R.mProcess(scriptData);
+                    switch (sData.status) {
+                        case "succeed":
+                            //中转加工逻辑
+                            R.mProcess(scriptData);
+                            break;
+                            /* case "error":
+                                 break;*/
+                    }
                 });
 
                 //当done完毕后清除所有sub数据 
-                scriptData.event.last('done', function() {
-                    scriptData.event.sub = [];
+                scriptEvent.last('done', function() {
+                    scriptEvent.sub = [];
                 });
 
                 //返回事件对象
-                return scriptData.event.clone();
+                return scriptEvent.clone();
             } else {
                 scriptData = dataMap[url];
+                var scriptEvent = scriptData.event;
                 if (!scriptData.type) {
                     //返回克隆对象
-                    return scriptData.event.clone();
+                    return scriptEvent.clone();
                 } else if (scriptData.type == "defer") {
                     nextTick(function() {
                         //中转defer逻辑
                         R.deferBrain(scriptData);
                     });
-                    return scriptData.event.clone();
+                    return scriptEvent.clone();
                 } else {
                     //返回事件对象
-                    return scriptData.event;
+                    return scriptEvent;
                 }
             }
         },
         //组载入文件
         groupScript: function(urls, requireObj) {
             var gatherFun = new GatherEvent('allloadend');
-            each(urls, function(e) {
+
+            //载入成功的数组 
+            var sucess = [],
+                errors = [];
+            //loading响应事件
+            var triggerLoading = function(i, urls, input, url, status) {
+                //触发loading函数
+                gatherFun.trigger('loading', {
+                    id: i,
+                    sucess: sucess,
+                    total: urls,
+                    errors: errors,
+                    input: input,
+                    url: url,
+                    status: status
+                });
+            };
+            each(urls, function(e, i) {
                 //根据地址获取固定地址
                 var url = getPath(e, requireObj.pub._dir);
                 //获取相对资源的事件实例
@@ -789,10 +831,38 @@
                 var subFun = gatherFun.create();
                 scriptEvent.one('done', function(e2) {
                     var tData = e2.data;
+
+                    //添加载入成功数组 
+                    sucess.push(e);
+
+                    //清除error事件
+                    scriptEvent.off('error');
+
                     //触发loading函数
-                    gatherFun.trigger('loading', tData);
+                    triggerLoading(i, urls, e, url, "succeed");
+
                     //触发子函数并记录数据
                     subFun(tData);
+                });
+                scriptEvent.one('error', function(e2) {
+
+                    //添加错误数组
+                    errors.push(e);
+
+                    //清除done事件
+                    scriptEvent.off('done');
+
+                    //触发loading
+                    triggerLoading(i, urls, e, url, "error");
+
+                    //触发error
+                    var errObj = {
+                        id: i,
+                        input: e,
+                        url: url
+                    };
+                    gatherFun.trigger('error', errObj);
+                    sr.error(errObj);
                 });
             });
             gatherFun.init();
@@ -809,6 +879,12 @@
                 each(requireObj._subRequire, function(e2) {
                     R.splitter(e2);
                 });
+            });
+            groupScriptGatherFun.on('loading', function(e) {
+                requireObj._rEvent.trigger('loading', e.data);
+            });
+            groupScriptGatherFun.on('error', function(e) {
+                requireObj._rEvent.trigger('error', e.data);
             });
         },
         //暴露给外部用的require
@@ -856,5 +932,4 @@
     Global.Require = Require;
     Global.R = R;
     Global.baseResources = baseResources;
-    Global.rootdir = rootdir;
 })(window);

@@ -7,8 +7,8 @@ defer(function(require, resolve, reject) {
     setTimeout(function() {
         resolve('Iamdefer4 ' + data);
     }, 200);
-    
+
     require('./defer2').done(function(e) {
         console.log(e);
     });
-});
+}, ["defer4haha1", "defer4haha2"]);
