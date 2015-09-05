@@ -35,7 +35,7 @@
         //只能返回载入完成的define模块
         use: function(url) {
             var dataObj = dataMap[getPath(url)];
-            if (dataObj && dataObj.status == 'done' && dataObj.type == "define") {
+            if (dataObj && dataObj.status == DONE && dataObj.type == DEFINE) {
                 return dataObj.content.exports;
             }
         },
@@ -61,20 +61,30 @@
         },
         //开发扩展用函数
         extend: function(fun) {
-            fun(baseResources, R, Require);
+            fun(baseResources, R, Require, GatherEvent);
         },
         //出现错误触发的函数 
         error: function(err) {
             console.log(err);
         },
         //版本号
-        version: "sugarRequire 2.0"
+        version: "2"
     };
 
     //COMMON
     var nextTickArr = [],
         isTick = false,
         windowHead = document.getElementsByTagName('head')[0];
+    var FIRSTREQUIREEND = "firstRequireEnd";
+    var CHAINEND = "chainend";
+    var READY = "ready";
+    var ALLLOADEND = "allloadend";
+    var LOADING = "loading";
+    var DONE = "done";
+    var ERROR = "error";
+    var SUCCEED = "succeed";
+    var DEFINE = "define";
+    var DEFER = "defer";
 
 
     //public function
@@ -405,7 +415,7 @@
         //是否create
         this._isCreate = false;
         //记录chainend的激活名
-        this._ceName = chainEndName || 'chainend';
+        this._ceName = chainEndName || CHAINEND;
     };
     GatherEvent.fn = GatherEvent.prototype = create(BindEvent.prototype);
     //制造子方法
@@ -446,11 +456,11 @@
 
         //完成ready后进行subFun的运行
         var subFun = this._origin.create();
-        this._rEvent.last('ready', function() {
+        this._rEvent.last(READY, function() {
             subFun();
         });
 
-        this._rEvent.on('ready', function(e) {
+        this._rEvent.on(READY, function(e) {
             _this.ready.apply(this, e.data);
         });
         this.doing(function(data) {
@@ -475,20 +485,20 @@
     Require.fn.loading = emptyFun;
     Require.fn.done = function(fun) {
         var _this = this;
-        this._rEvent.on('ready', function(e) {
+        this._rEvent.on(READY, function(e) {
             //fun(e.data);
             fun.apply(_this, e.data);
         });
         return this;
     };
     Require.fn.doing = function(fun) {
-        this._rEvent.on('loading', function(e) {
+        this._rEvent.on(LOADING, function(e) {
             fun(e.data);
         });
         return this;
     };
     Require.fn.fail = function(fun) {
-        this._rEvent.on('error', function(e) {
+        this._rEvent.on(ERROR, function(e) {
             fun(e.data);
         });
         return this;
@@ -584,7 +594,7 @@
                     var isRequireEnd = false;
 
                     //首层require集合器
-                    var firstRequireGather = new GatherEvent('firstRequireEnd');
+                    var firstRequireGather = new GatherEvent(FIRSTREQUIREEND);
 
                     var reValue = tempM.value.call({
                         FILE: scriptData.script.src,
@@ -593,7 +603,7 @@
                         hasUseRequire = true;
 
                         //继承使用require
-                        var requireObj = R.require.apply({}, arguments);
+                        var requireObj = R.require.apply(R, arguments);
 
                         //设置file链接
                         requireObj.pub._dir = dirname(scriptData.script.src);
@@ -604,7 +614,7 @@
                             var subRequire = firstRequireGather.create();
 
                             //链完成后触发子集合器
-                            requireObj._rEvent.on('chainend', subRequire);
+                            requireObj._rEvent.on(CHAINEND, subRequire);
                         }
 
                         //返回值
@@ -620,26 +630,26 @@
                         reValue && (modules.exports = reValue);
 
                         //永久激活模块
-                        scriptData.status = "done";
-                        scriptData.event.ever('done', modules.exports);
+                        scriptData.status = DONE;
+                        scriptData.event.ever(DONE, modules.exports);
                     } else {
                         //使用了内部的require
                         //初始化集合器 
                         firstRequireGather.init();
 
                         //集合完毕后永久激活模块
-                        firstRequireGather.on('firstRequireEnd', function() {
+                        firstRequireGather.on(FIRSTREQUIREEND, function() {
                             //修正数据
-                            scriptData.status = "done";
-                            scriptData.event.ever('done', modules.exports);
+                            scriptData.status = DONE;
+                            scriptData.event.ever(DONE, modules.exports);
                         });
                     }
                     break;
                 default:
                     //模块数据永久done
-                    scriptData.status = "done";
+                    scriptData.status = DONE;
                     modules.exports = tempM.value
-                    scriptData.event.ever('done', tempM.value);
+                    scriptData.event.ever(DONE, tempM.value);
                     break;
             };
         },
@@ -655,16 +665,16 @@
                     data: e.data
                 }, function() {
                     //继承使用require
-                    var requireObj = R.require.apply({}, arguments);
+                    var requireObj = R.require.apply(R, arguments);
                     //设置file链接
                     requireObj.pub._dir = dirname(scriptData.script.src);
                     return requireObj;
                 }, function(succeedData) {
                     //resolve
-                    e.trigger('done', succeedData);
+                    e.trigger(DONE, succeedData);
                 }, function(errorData) {
                     //reject
-                    e.trigger('error', errorData);
+                    e.trigger(ERROR, errorData);
                 });
             });
 
@@ -694,15 +704,15 @@
 
             //根据type获取值
             switch (tempM.type) {
-                case "define":
+                case DEFINE:
                     //修正数据
-                    scriptData.type = "define";
+                    scriptData.type = DEFINE;
                     //设置模块
                     R.setDefine(scriptData);
                     break;
-                case "defer":
+                case DEFER:
                     //修正数据(defer永远不会进入done状态，只会在succeed加载完成状态)
-                    scriptData.type = "defer";
+                    scriptData.type = DEFER;
                     //设置defer模块内容
                     scriptData.content = tempM.value;
                     //中转defer逻辑
@@ -711,9 +721,9 @@
                 default:
                     //修正数据
                     scriptData.type = "file";
-                    scriptData.status = "done";
+                    scriptData.status = DONE;
                     //普通文件永久性触发done
-                    scriptEvent.ever('done');
+                    scriptEvent.ever(DONE);
                     break;
             };
             //还原tempM
@@ -724,13 +734,13 @@
             var scriptTag = getScriptTag(url);
             scriptTag.onload = function() {
                 callback({
-                    status: "succeed",
+                    status: SUCCEED,
                     script: scriptTag
                 });
             };
             scriptTag.onerror = function() {
                 callback({
-                    status: "error",
+                    status: ERROR,
                     script: scriptTag
                 });
             };
@@ -764,7 +774,7 @@
                     scriptEvent.ever(sData.status);
 
                     switch (sData.status) {
-                        case "succeed":
+                        case SUCCEED:
                             //中转加工逻辑
                             R.mProcess(scriptData);
                             break;
@@ -774,7 +784,7 @@
                 });
 
                 //当done完毕后清除所有sub数据 
-                scriptEvent.last('done', function() {
+                scriptEvent.last(DONE, function() {
                     scriptEvent.sub = [];
                 });
 
@@ -786,7 +796,7 @@
                 if (!scriptData.type) {
                     //返回克隆对象
                     return scriptEvent.clone();
-                } else if (scriptData.type == "defer") {
+                } else if (scriptData.type == DEFER) {
                     nextTick(function() {
                         //中转defer逻辑
                         R.deferBrain(scriptData);
@@ -800,7 +810,7 @@
         },
         //组载入文件
         groupScript: function(urls, requireObj) {
-            var gatherFun = new GatherEvent('allloadend');
+            var gatherFun = new GatherEvent(ALLLOADEND);
 
             //载入成功的数组 
             var sucess = [],
@@ -808,7 +818,7 @@
             //loading响应事件
             var triggerLoading = function(i, urls, input, url, status) {
                 //触发loading函数
-                gatherFun.trigger('loading', {
+                gatherFun.trigger(LOADING, {
                     id: i,
                     sucess: sucess,
                     total: urls,
@@ -829,31 +839,31 @@
 
                 //子函数触发
                 var subFun = gatherFun.create();
-                scriptEvent.one('done', function(e2) {
+                scriptEvent.one(DONE, function(e2) {
                     var tData = e2.data;
 
                     //添加载入成功数组 
                     sucess.push(e);
 
                     //清除error事件
-                    scriptEvent.off('error');
+                    scriptEvent.off(ERROR);
 
                     //触发loading函数
-                    triggerLoading(i, urls, e, url, "succeed");
+                    triggerLoading(i, urls, e, url, SUCCEED);
 
                     //触发子函数并记录数据
                     subFun(tData);
                 });
-                scriptEvent.one('error', function(e2) {
+                scriptEvent.one(ERROR, function(e2) {
 
                     //添加错误数组
                     errors.push(e);
 
                     //清除done事件
-                    scriptEvent.off('done');
+                    scriptEvent.off(DONE);
 
                     //触发loading
-                    triggerLoading(i, urls, e, url, "error");
+                    triggerLoading(i, urls, e, url, ERROR);
 
                     //触发error
                     var errObj = {
@@ -861,7 +871,7 @@
                         input: e,
                         url: url
                     };
-                    gatherFun.trigger('error', errObj);
+                    gatherFun.trigger(ERROR, errObj);
                     sr.error(errObj);
                 });
             });
@@ -873,21 +883,21 @@
             //获取urls
             var urls = requireObj._urls;
             var groupScriptGatherFun = R.groupScript(urls, requireObj);
-            groupScriptGatherFun.on('allloadend', function(e) {
-                requireObj._rEvent.trigger('ready', e.data);
+            groupScriptGatherFun.on(ALLLOADEND, function(e) {
+                requireObj._rEvent.trigger(READY, e.data);
                 //获取下一组urls并载入
                 each(requireObj._subRequire, function(e2) {
                     R.splitter(e2);
                 });
             });
-            groupScriptGatherFun.on('loading', function(e) {
-                requireObj._rEvent.trigger('loading', e.data);
+            groupScriptGatherFun.on(LOADING, function(e) {
+                requireObj._rEvent.trigger(LOADING, e.data);
             });
-            groupScriptGatherFun.on('error', function(e) {
-                requireObj._rEvent.trigger('error', e.data);
+            groupScriptGatherFun.on(ERROR, function(e) {
+                requireObj._rEvent.trigger(ERROR, e.data);
             });
         },
-        //暴露给外部用的require
+        //实际用的require
         require: function() {
             var urls = transToArray(arguments);
             var requireObj = new Require(urls);
@@ -900,7 +910,7 @@
         //定义数据模块
         define: function(dValue, dName) {
             baseResources.tempM = {
-                type: "define",
+                type: DEFINE,
                 value: dValue,
                 name: dName
             };
@@ -908,7 +918,7 @@
         //定义延迟模块
         defer: function(dValue, dName) {
             baseResources.tempM = {
-                type: "defer",
+                type: DEFER,
                 value: dValue,
                 name: dName
             };
@@ -916,20 +926,46 @@
     };
 
     //init
-    sr.require = R.require;
-    sr.define = R.define;
-    sr.defer = R.defer;
-    Global.sr = sr;
-    (!Global.require) && (Global.require = R.require);
-    (!Global.define) && (Global.define = R.define);
-    (!Global.defer) && (Global.defer = R.defer);
+
+    //异步初始化断定
+    var gsr = Global.sr;
+    if (gsr) {
+        var gConfig = gsr.config;
+        if (gConfig) {
+            sr.config(gConfig);
+        }
+        var gReady = gsr.ready;
+        if (gReady) {
+            gReady();
+        }
+    }
+
     //rootdir初始化
     rootdir = dirname(location.href);
 
+    //初始化参数
+    //暴露给外部用函数
+    var ourRequire = function() {
+        return R.require.apply(R, arguments);
+    };
+    var ourDefine = function() {
+        return R.define.apply(R, arguments);
+    };
+    var ourDefer = function() {
+        return R.defer.apply(R, arguments);
+    };
+    sr.require = ourRequire;
+    sr.define = ourDefine;
+    sr.defer = ourDefer;
+    Global.sr = sr;
+    (!Global.require) && (Global.require = ourRequire);
+    (!Global.define) && (Global.define = ourDefine);
+    (!Global.defer) && (Global.defer = ourDefer);
+
     //test
-    Global.BindEvent = BindEvent;
+    /*Global.BindEvent = BindEvent;
     Global.GatherEvent = GatherEvent;
     Global.Require = Require;
     Global.R = R;
-    Global.baseResources = baseResources;
+    Global.baseResources = baseResources;*/
 })(window);
