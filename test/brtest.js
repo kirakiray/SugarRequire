@@ -115,8 +115,14 @@
                     });
                 }
             } else {
-                return {
-                    con: "unknow"
+                if (num) {
+                    return {
+                        con: "unknow"
+                    }
+                } else {
+                    return [{
+                        con: "unknow"
+                    }];
                 }
             }
         }
@@ -326,7 +332,7 @@
             this.statusBlock.addInLine({
                 //stauts
                 key: "count",
-                value: data.count,
+                value: data.count
             });
             this.statusBlock.addInLine({
                 //stauts
@@ -347,7 +353,7 @@
             this.statusBlock = this.addBlock([{
                 //stauts
                 key: "count",
-                value: data.count,
+                value: data.count
             }, {
                 //stauts
                 key: "status",

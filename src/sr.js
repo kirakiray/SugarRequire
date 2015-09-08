@@ -53,7 +53,7 @@
             }
         },
         //删除对应url数据
-        delete: function(url) {
+        "delete": function(url) {
             var aburl = getPath(url);
             var dataObj = dataMap[aburl];
             dataObj && dataObj.script.remove();
@@ -149,7 +149,7 @@
             } else {
                 return function(arr, fun) {
                     for (var i = 0, len = arr.length; i < len; i++) {
-                        reMap.push(fun(arr[i], i));
+                        fun(arr[i], i);
                     };
                 };
             }
@@ -597,7 +597,7 @@
                     var firstRequireGather = new GatherEvent(FIRSTREQUIREEND);
 
                     var reValue = tempM.value.call({
-                        FILE: scriptData.script.src,
+                        FILE: scriptData.script.src
                     }, function() {
                         //设置使用过内部require
                         hasUseRequire = true;
@@ -758,7 +758,7 @@
                     //wait表示等待中     succeed表示script加载完毕（并不代表可立即执行）     error表示加载错误      done表示充分准备完毕加载完成   
                     status: "wait",
                     //挂载对象
-                    event: scriptEvent,
+                    event: scriptEvent
                     //标签
                     //script: "",
                     //类型 file普通文件  define模块  defer模块
