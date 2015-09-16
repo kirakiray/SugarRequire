@@ -1,3 +1,6 @@
+//SugarRequire调试用插件
+//同于暴露内部变量到全局
+//添加路径错误提示
 sr.extend(function(baseResources, R, Require, GatherEvent) {
     //暴露参数
     var Global = window;
@@ -15,6 +18,9 @@ sr.extend(function(baseResources, R, Require, GatherEvent) {
             a();
         } catch (err) {
             var errStack = err.stack;
+            if (!errStack) {
+                return reObj
+            }
             var errArr = errStack.match(/\w+?:\/\/\/.+\d/g);
             inputPosition = errArr[2];
         }
@@ -32,6 +38,9 @@ sr.extend(function(baseResources, R, Require, GatherEvent) {
             a();
         } catch (err) {
             var errStack = err.stack;
+            if (!errStack) {
+                return reObj
+            }
             var errArr = errStack.match(/\w+?:\/\/\/.+\d/g);
             inputPosition = errArr[1];
         }

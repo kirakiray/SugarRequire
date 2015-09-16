@@ -550,12 +550,14 @@
     //引用url和相对目录
     var getPath = function(value, relateDir) {
         //判断是否当前文件目录
-        var relateNowFileArr = value.split(/^.\//);
+        var reg = /^.\//;
+        var isRelate = reg.test(value);
+        var relateNowFileArr = value.split(reg);
         //获取后缀
         var suffix = value.match(/\?.+$/g) || [""];
-        if (relateNowFileArr.length >= 2) {
+        if (isRelate) {
             //如果为两位数则是相对当前文件目录
-            var rePath = relateDir + concatJS(removeJS(relateNowFileArr[1])) + suffix[0];
+            var rePath = relateDir + concatJS(removeJS(relateNowFileArr.slice(-1)[0])) + suffix[0];
             //获取相对定位
             rePath = rePath.replace(rootdir, "");
             //去除上级目录定位(../)
@@ -744,7 +746,10 @@
                     script: scriptTag
                 });
             };
-            windowHead.appendChild(scriptTag);
+            //ie10对 async支持差的修正方案
+            nextTick(function() {
+                windowHead.appendChild(scriptTag);
+            });
         },
         //loadScript前的代理
         scriptAgent: function(url, requireObj) {
@@ -752,19 +757,19 @@
 
             //判空并填充相应数据
             if (!dataMap[url]) {
-                var scriptEvent = new BindEvent()
+                var scriptEvent = new BindEvent();
                 scriptData = dataMap[url] = {
                     //加载状态
                     //wait表示等待中     succeed表示script加载完毕（并不代表可立即执行）     error表示加载错误      done表示充分准备完毕加载完成   
                     status: "wait",
                     //挂载对象
                     event: scriptEvent
-                    //标签
-                    //script: "",
-                    //类型 file普通文件  define模块  defer模块
-                    //type: "",
-                    //模块内容
-                    //content : ""
+                        //标签
+                        //script: "",
+                        //类型 file普通文件  define模块  defer模块
+                        //type: "",
+                        //模块内容
+                        //content : ""
                 }
                 R.loadScript(url, function(sData) {
                     //修正数据
@@ -778,8 +783,6 @@
                             //中转加工逻辑
                             R.mProcess(scriptData);
                             break;
-                            /* case "error":
-                                 break;*/
                     }
                 });
 

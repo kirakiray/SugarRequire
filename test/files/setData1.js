@@ -1,1 +1,1 @@
-window.wdata1 = "IamData1";
+wdata1 = "IamData1";
