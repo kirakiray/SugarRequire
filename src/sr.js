@@ -46,7 +46,6 @@
             var dataObj = dataMap[getPath(url)];
             if (dataObj) {
                 return {
-                    exports: dataObj.content && dataObj.content.exports,
                     status: dataObj.status,
                     type: dataObj.type
                 };
@@ -223,7 +222,6 @@
         //根据参数进行事件清理
         //清理所有事件
         if (!arguments.length) {
-            delete this._map;
             this._map = [];
         }
 
@@ -548,11 +546,11 @@
 
     //修正目录的相对位置，根目录等
     //引用url和相对目录
+    var localReg = /^.\//;
     var getPath = function(value, relateDir) {
         //判断是否当前文件目录
-        var reg = /^.\//;
-        var isRelate = reg.test(value);
-        var relateNowFileArr = value.split(reg);
+        var isRelate = localReg.test(value);
+        var relateNowFileArr = value.split(localReg);
         //获取后缀
         var suffix = value.match(/\?.+$/g) || [""];
         if (isRelate) {
@@ -870,6 +868,9 @@
 
                     //触发error
                     var errObj = {
+                        total: urls,
+                        sucess: sucess,
+                        errors: errors,
                         id: i,
                         input: e,
                         url: url

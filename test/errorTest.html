@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>defer test</title>
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <link href="brtest.css" type="text/css" rel="stylesheet" />
+    <script src="../src/sr.js"></script>
+    <script src="../plugin/sr-IEloster.js"></script>
+    <script src="../plugin/sr-debug.js"></script>
+</head>
+
+<body>
+
+</body>
+<script src="brtest.js"></script>
+<script>
+    require('files/define1', 'nonono').done(function(e) {
+        console.log('done!!!!!!!!!!!!!');
+    }).doing(function(e) {
+        console.log("doing:", e);
+    }).fail(function(e) {
+        console.log("fail", e);
+    });
+</script>
+
+</html>
