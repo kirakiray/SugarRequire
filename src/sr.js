@@ -940,7 +940,7 @@
         }
         var gReady = gsr.ready;
         if (gReady) {
-            gReady();
+            nextTick(gReady);
         }
     }
 
