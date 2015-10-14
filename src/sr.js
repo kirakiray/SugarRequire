@@ -606,7 +606,7 @@
                         var requireObj = R.require.apply(R, arguments);
 
                         //设置file链接
-                        requireObj.pub._dir = dirname(scriptData.script.src);
+                        requireObj.pub._par = scriptData.script.src;
 
                         //判断是否结束子层require
                         if (!isRequireEnd) {
@@ -667,7 +667,7 @@
                     //继承使用require
                     var requireObj = R.require.apply(R, arguments);
                     //设置file链接
-                    requireObj.pub._dir = dirname(scriptData.script.src);
+                    requireObj.pub._par = scriptData.script.src;
                     return requireObj;
                 }, function(succeedData) {
                     //resolve
@@ -830,8 +830,9 @@
                 });
             };
             each(urls, function(e, i) {
+                var _par = requireObj.pub._par;
                 //根据地址获取固定地址
-                var url = getPath(e, requireObj.pub._dir);
+                var url = getPath(e, _par && dirname(_par));
                 //获取相对资源的事件实例
                 var scriptEvent = R.scriptAgent(url, requireObj);
 
