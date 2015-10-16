@@ -26,7 +26,7 @@
         con.one('subdefer');
     });
     brtest.test('file and define and defer test', function(con) {
-        require('files/define1', 'files/define2', 'files/defer2')
+        require('files/define1.js?asd=11', 'files/define2', 'files/defer2')
             .doing(function(e) {
                 brtest.order(rName, 'doingtest');
                 //console.log(e);

@@ -84,6 +84,7 @@
     var SUCCEED = "succeed";
     var DEFINE = "define";
     var DEFER = "defer";
+    var ADDDELY = "adddely";
 
 
     //public function
@@ -577,7 +578,7 @@
     //main
     var R = {
         //设置define模块
-        setDefine: function(scriptData) {
+        setDefine: function(scriptData, requireObj) {
             var tempM = baseResources.tempM;
             //判断value类型进行剥取模块内容
             var tempValueType = getType(tempM.value);
@@ -603,10 +604,12 @@
                         hasUseRequire = true;
 
                         //继承使用require
-                        var requireObj = R.require.apply(R, arguments);
+                        var rObj = R.require.apply(R, arguments);
 
-                        //设置file链接
-                        requireObj.pub._par = scriptData.script.src;
+                        //设置关联数据
+                        rObj.pub._par = scriptData.script.src;
+                        requireObj._rEvent.trigger(ADDDELY, rObj);
+                        //rObj._pg = requireObj;
 
                         //判断是否结束子层require
                         if (!isRequireEnd) {
@@ -614,11 +617,11 @@
                             var subRequire = firstRequireGather.create();
 
                             //链完成后触发子集合器
-                            requireObj._rEvent.on(CHAINEND, subRequire);
+                            rObj._rEvent.on(CHAINEND, subRequire);
                         }
 
                         //返回值
-                        return requireObj;
+                        return rObj;
                     }, modules.exports, modules);
 
                     //设置结束
@@ -654,7 +657,7 @@
             };
         },
         //defer模块处理装置（函数）
-        deferBrain: function(scriptData) {
+        deferBrain: function(scriptData, requireObj) {
             //获取子event对象 
             var eventArr = scriptData.event.sub;
 
@@ -665,10 +668,12 @@
                     data: e.data
                 }, function() {
                     //继承使用require
-                    var requireObj = R.require.apply(R, arguments);
-                    //设置file链接
-                    requireObj.pub._par = scriptData.script.src;
-                    return requireObj;
+                    var rObj = R.require.apply(R, arguments);
+                    //设置关联数据
+                    rObj.pub._par = scriptData.script.src;
+                    requireObj._rEvent.trigger(ADDDELY, rObj);
+                    //rObj._pg = requireObj;
+                    return rObj;
                 }, function(succeedData) {
                     //resolve
                     e.trigger(DONE, succeedData);
@@ -682,7 +687,7 @@
             scriptData.event.sub = [];
         },
         //根据temM获取相应内容
-        mProcess: function(scriptData) {
+        mProcess: function(scriptData, requireObj) {
             //获取事件对象
             var scriptEvent = scriptData.event;
             var tempM = baseResources.tempM;
@@ -708,7 +713,7 @@
                     //修正数据
                     scriptData.type = DEFINE;
                     //设置模块
-                    R.setDefine(scriptData);
+                    R.setDefine(scriptData, requireObj);
                     break;
                 case DEFER:
                     //修正数据(defer永远不会进入done状态，只会在succeed加载完成状态)
@@ -716,7 +721,7 @@
                     //设置defer模块内容
                     scriptData.content = tempM.value;
                     //中转defer逻辑
-                    R.deferBrain(scriptData);
+                    R.deferBrain(scriptData, requireObj);
                     break;
                 default:
                     //修正数据
@@ -779,7 +784,7 @@
                     switch (sData.status) {
                         case SUCCEED:
                             //中转加工逻辑
-                            R.mProcess(scriptData);
+                            R.mProcess(scriptData, requireObj);
                             break;
                     }
                 });
@@ -800,7 +805,7 @@
                 } else if (scriptData.type == DEFER) {
                     nextTick(function() {
                         //中转defer逻辑
-                        R.deferBrain(scriptData);
+                        R.deferBrain(scriptData, requireObj);
                     });
                     return scriptEvent.clone();
                 } else {
@@ -857,7 +862,6 @@
                     subFun(tData);
                 });
                 scriptEvent.one(ERROR, function(e2) {
-
                     //添加错误数组
                     errors.push(e);
 
