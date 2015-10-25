@@ -836,7 +836,7 @@
                 //根据地址获取固定地址
                 var url = getPath(e, _par && dirname(_par));
                 //获取相对资源的事件实例
-                var scriptEvent = R.scriptAgent(url, requireObj);
+                var scriptEvent = R.scriptAgent(url, requireObj, e);
 
                 //挂载自定义数据
                 requireObj.data && (scriptEvent.data = requireObj.data);
