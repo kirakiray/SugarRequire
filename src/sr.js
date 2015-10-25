@@ -578,7 +578,7 @@
     //main
     var R = {
         //设置define模块
-        setDefine: function(scriptData, requireObj) {
+        setDefine: function(scriptData, rEvent) {
             var tempM = baseResources.tempM;
             //判断value类型进行剥取模块内容
             var tempValueType = getType(tempM.value);
@@ -608,8 +608,7 @@
 
                         //设置关联数据
                         rObj.pub._par = scriptData.script.src;
-                        requireObj._rEvent.trigger(ADDDELY, rObj);
-                        //rObj._pg = requireObj;
+                        rEvent.trigger(ADDDELY, rObj);
 
                         //判断是否结束子层require
                         if (!isRequireEnd) {
@@ -657,7 +656,7 @@
             };
         },
         //defer模块处理装置（函数）
-        deferBrain: function(scriptData, requireObj) {
+        deferBrain: function(scriptData, rEvent) {
             //获取子event对象 
             var eventArr = scriptData.event.sub;
 
@@ -671,8 +670,7 @@
                     var rObj = R.require.apply(R, arguments);
                     //设置关联数据
                     rObj.pub._par = scriptData.script.src;
-                    requireObj._rEvent.trigger(ADDDELY, rObj);
-                    //rObj._pg = requireObj;
+                    rEvent.trigger(ADDDELY, rObj);
                     return rObj;
                 }, function(succeedData) {
                     //resolve
@@ -687,7 +685,7 @@
             scriptData.event.sub = [];
         },
         //根据temM获取相应内容
-        mProcess: function(scriptData, requireObj) {
+        mProcess: function(scriptData, rEvent) {
             //获取事件对象
             var scriptEvent = scriptData.event;
             var tempM = baseResources.tempM;
@@ -713,7 +711,7 @@
                     //修正数据
                     scriptData.type = DEFINE;
                     //设置模块
-                    R.setDefine(scriptData, requireObj);
+                    R.setDefine(scriptData, rEvent);
                     break;
                 case DEFER:
                     //修正数据(defer永远不会进入done状态，只会在succeed加载完成状态)
@@ -721,7 +719,7 @@
                     //设置defer模块内容
                     scriptData.content = tempM.value;
                     //中转defer逻辑
-                    R.deferBrain(scriptData, requireObj);
+                    R.deferBrain(scriptData, rEvent);
                     break;
                 default:
                     //修正数据
@@ -761,6 +759,7 @@
             //判空并填充相应数据
             if (!dataMap[url]) {
                 var scriptEvent = new BindEvent();
+                var rEvent = scriptEvent.clone();
                 scriptData = dataMap[url] = {
                     //加载状态
                     //wait表示等待中     succeed表示script加载完毕（并不代表可立即执行）     error表示加载错误      done表示充分准备完毕加载完成   
@@ -784,7 +783,7 @@
                     switch (sData.status) {
                         case SUCCEED:
                             //中转加工逻辑
-                            R.mProcess(scriptData, requireObj);
+                            R.mProcess(scriptData, rEvent);
                             break;
                     }
                 });
@@ -795,22 +794,20 @@
                 });
 
                 //返回事件对象
-                return scriptEvent.clone();
+                return rEvent;
             } else {
                 scriptData = dataMap[url];
                 var scriptEvent = scriptData.event;
-                if (!scriptData.type) {
-                    //返回克隆对象
-                    return scriptEvent.clone();
-                } else if (scriptData.type == DEFER) {
+                var rEvent = scriptEvent.clone();
+                if (scriptData.type == DEFER) {
                     nextTick(function() {
                         //中转defer逻辑
-                        R.deferBrain(scriptData, requireObj);
+                        R.deferBrain(scriptData, rEvent);
                     });
-                    return scriptEvent.clone();
+                    return rEvent;
                 } else {
                     //返回事件对象
-                    return scriptEvent;
+                    return rEvent;
                 }
             }
         },
