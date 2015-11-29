@@ -41,7 +41,7 @@ sr.extend(function(baseResources, R, Require, GatherEvent) {
             if (!errStack) {
                 return reObj
             }
-            var errArr = errStack.match(/\w+?:\/\/\/.+\d/g);
+            var errArr = errStack.match(/[a-zA-Z]+?:\/\/.+\d/g);
             inputPosition = errArr[1];
         }
         reObj._rEvent.one('error', function() {
