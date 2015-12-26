@@ -14,6 +14,9 @@
     };
     //当前html的dirname
     var rootdir = "";
+    //引用url和相对目录
+    var LocalReg = /^.\//;
+    var PathdirarrReg = /.+?\//;
 
     //外部用统一对象
     var sr = {
@@ -34,7 +37,7 @@
         //只能使用绝对路径（相对baseUrl）
         //只能返回载入完成的define模块
         use: function(url) {
-            var dataObj = dataMap[getPath(url)];
+            var dataObj = dataMap[R.getPath(url)];
             if (dataObj && dataObj.status == DONE && dataObj.type == DEFINE) {
                 return dataObj.content.exports;
             }
@@ -43,7 +46,7 @@
         //只能使用绝对路径（相对baseUrl）
         //has有返回数据并不代表完全加载完成
         has: function(url) {
-            var dataObj = dataMap[getPath(url)];
+            var dataObj = dataMap[R.getPath(url)];
             if (dataObj) {
                 return {
                     status: dataObj.status,
@@ -53,7 +56,7 @@
         },
         //删除对应url数据
         "delete": function(url) {
-            var aburl = getPath(url);
+            var aburl = R.getPath(url);
             var dataObj = dataMap[aburl];
             dataObj && dataObj.script.remove();
             delete dataMap[aburl];
@@ -443,9 +446,9 @@
     };
 
     //business class
-    var Require = function(urls, originGather) {
-        if (originGather) {
-            this._origin = originGather;
+    var Require = function(urls, _originGather) {
+        if (_originGather) {
+            this._origin = _originGather;
             this._rEvent = new BindEvent();
         } else {
             this._origin = this._rEvent = new GatherEvent();
@@ -543,36 +546,6 @@
             newArr.push(e);
         });
         return newArr.join('/');
-    };
-
-    //修正目录的相对位置，根目录等
-    //引用url和相对目录
-    var localReg = /^.\//;
-    var getPath = function(value, relateDir) {
-        //判断是否当前文件目录
-        var isRelate = localReg.test(value);
-        var relateNowFileArr = value.split(localReg);
-        //获取后缀
-        var suffix = value.match(/\?.+$/g) || [""];
-        if (isRelate) {
-            //如果为两位数则是相对当前文件目录
-            var rePath = relateDir + concatJS(removeJS(relateNowFileArr.slice(-1)[0])) + suffix[0];
-            //获取相对定位
-            rePath = rePath.replace(rootdir, "");
-            //去除上级目录定位(../)
-            rePath = removeParentPath(rePath);
-            return rePath;
-        } else {
-            var baseUrl = baseResources.baseUrl;
-            //相对根目录
-            var path = baseResources.paths[value] || value;
-            //带协议的文件
-            if ((/.+:\/\//g).test(path)) {
-                return path;
-            }
-            var rePath = baseUrl ? baseUrl.concat("/" + path) : path;
-            return concatJS(removeJS(rePath)) + suffix[0];
-        }
     };
 
     //main
@@ -811,6 +784,50 @@
                 }
             }
         },
+        //修正目录的相对位置，根目录等
+        getPath: function(value, relateDir) {
+            //判断是否当前文件目录
+            var isRelate = LocalReg.test(value);
+            var relateNowFileArr = value.split(LocalReg);
+            //获取后缀
+            var suffix = value.match(/\?.+$/g) || [""];
+            if (isRelate) {
+                //如果为两位数则是相对当前文件目录
+                var rePath = relateDir + concatJS(removeJS(relateNowFileArr.slice(-1)[0])) + suffix[0];
+                //获取相对定位
+                rePath = rePath.replace(rootdir, "");
+                //去除上级目录定位(../)
+                rePath = removeParentPath(rePath);
+                return rePath;
+            } else {
+                //相对根目录
+                var baseUrl = baseResources.baseUrl;
+                var path;
+                if (paths[value]) {
+                    //有相对文件
+                    path = paths[value];
+                } else {
+                    //判断是否有path目录 
+                    var pathdirarr = value.match(PathdirarrReg);
+                    if (pathdirarr) {
+                        if (paths[pathdirarr[0]]) {
+                            path = paths[pathdirarr[0]].concat(value.replace(PathdirarrReg, ""));
+                        } else {
+                            path = value;
+                        }
+                    } else {
+                        path = value;
+                    }
+                }
+                // var path = paths[value] || value;
+                //带协议的文件
+                if ((/.+:\/\//g).test(path)) {
+                    return path;
+                }
+                var rePath = baseUrl ? baseUrl.concat("/" + path) : path;
+                return concatJS(removeJS(rePath)) + suffix[0];
+            }
+        },
         //组载入文件
         groupScript: function(urls, requireObj) {
             var gatherFun = new GatherEvent(ALLLOADEND);
@@ -834,7 +851,7 @@
             each(urls, function(e, i) {
                 var _par = requireObj.pub._par;
                 //根据地址获取固定地址
-                var url = getPath(e, _par && dirname(_par));
+                var url = R.getPath(e, _par && dirname(_par));
                 //获取相对资源的事件实例
                 var scriptEvent = R.scriptAgent(url, requireObj, e);
 
@@ -967,11 +984,4 @@
     (!Global.require) && (Global.require = ourRequire);
     (!Global.define) && (Global.define = ourDefine);
     (!Global.defer) && (Global.defer = ourDefer);
-
-    //test
-    /*Global.BindEvent = BindEvent;
-    Global.GatherEvent = GatherEvent;
-    Global.Require = Require;
-    Global.R = R;
-    Global.baseResources = baseResources;*/
 })(window);
