@@ -15,7 +15,7 @@
     //当前html的dirname
     var rootdir = "";
     //引用url和相对目录
-    var LocalReg = /^.\//;
+    var LocalReg = /^\.\//;
     var PathdirarrReg = /.+?\//;
 
     //外部用统一对象
@@ -127,7 +127,7 @@
             @return {object} 继承后的新对象
         */
         create = Object.create || function(obj) {
-            var f = emptyFun;
+            var f = function() {};
             f.prototype = obj;
             return new f();
         },
@@ -192,15 +192,18 @@
             @param {string} filename 传入当前文件的url
         */
         dirname = function(filename) {
-            var redirname = "";
+            // var redirname = "";
+            // var filenameArr = filename.split('/');
+            // var dirnameLastId = filenameArr.length - 1;
+            // each(filenameArr, function(e, i) {
+            //     if (dirnameLastId > i) {
+            //         redirname += e + '/';
+            //     }
+            // });
+            // return redirname;
             var filenameArr = filename.split('/');
-            var dirnameLastId = filenameArr.length - 1;
-            each(filenameArr, function(e, i) {
-                if (dirnameLastId > i) {
-                    redirname += e + '/';
-                }
-            });
-            return redirname;
+            filenameArr = filenameArr.slice(0, -1);
+            return filenameArr.join('/') + '/';
         };
 
 
@@ -579,12 +582,12 @@
                         //继承使用require
                         var rObj = R.require.apply(R, arguments);
 
-                        //设置关联数据
-                        rObj.pub._par = scriptData.script.src;
-                        rEvent.trigger(ADDDELY, rObj);
-
                         //判断是否结束子层require
                         if (!isRequireEnd) {
+                            //设置关联数据
+                            rObj.pub._par = scriptData.script.src;
+                            rEvent.trigger(ADDDELY, rObj);
+
                             //生成子集合器
                             var subRequire = firstRequireGather.create();
 
@@ -727,7 +730,7 @@
         },
         //loadScript前的代理
         scriptAgent: function(url, requireObj) {
-            var scriptData = "";
+            var scriptData;
 
             //判空并填充相应数据
             if (!dataMap[url]) {
@@ -803,7 +806,11 @@
                 //相对根目录
                 var baseUrl = baseResources.baseUrl;
                 var path;
-                if (paths[value]) {
+                //判断是否有资源
+                if (dataMap[value]) {
+                    return value;
+                } else if (paths[value]) {
+                    //是否有相对注册路径 
                     //有相对文件
                     path = paths[value];
                 } else {
