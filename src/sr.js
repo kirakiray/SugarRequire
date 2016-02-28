@@ -16,7 +16,7 @@
     var rootdir = "";
     //引用url和相对目录
     var LocalReg = /^\.\//;
-    var PathdirarrReg = /.+?\//;
+    var PathdirarrReg = /.+?\/\//;
 
     //外部用统一对象
     var sr = {
