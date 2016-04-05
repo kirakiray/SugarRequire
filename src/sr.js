@@ -1,4 +1,5 @@
 (function(Global) {
+    "use strict";
     //baseData
     //自定义的路径
     var paths = {};
@@ -76,7 +77,7 @@
     //COMMON
     var nextTickArr = [],
         isTick = false,
-        windowHead = document.getElementsByTagName('head')[0];
+        windowHead = document.head;
     var FIRSTREQUIREEND = "firstRequireEnd";
     var CHAINEND = "chainend";
     var READY = "ready";
