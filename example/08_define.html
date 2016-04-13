@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no">
+    <title>require</title>
+    <script src="js/public.js"></script>
+    <script src="../src/sr.js"></script>
+</head>
+
+<body>
+</body>
+<script>
+sr.config({
+    baseUrl: "js"
+});
+require('define/define02').done(function(data) {
+    println(data.val + ' 和 ' + data.define01.val);
+    console.log(data);
+});
+</script>
+
+</html>

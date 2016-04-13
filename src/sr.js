@@ -618,6 +618,8 @@
 
                         //集合完毕后永久激活模块
                         firstRequireGather.on(FIRSTREQUIREEND, function() {
+                            //优先使用返回值
+                            reValue && (modules.exports = reValue);
                             //修正数据
                             scriptData.status = DONE;
                             scriptData.event.ever(DONE, modules.exports);

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no">
+    <title>require</title>
+    <script src="js/public.js"></script>
+    <script src="../src/sr.js"></script>
+</head>
+
+<body>
+</body>
+<script>
+require('js/file/file01').done(function() {
+    println('file01 is ok!!');
+});
+
+require('js/file/file01').done(function() {
+    println('同样的文件只会载入一次，但是done会确认载入完成才执行');
+});
+</script>
+
+</html>

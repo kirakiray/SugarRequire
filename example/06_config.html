@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no">
+    <title>require</title>
+    <script src="js/public.js"></script>
+    <script src="../src/sr.js"></script>
+</head>
+
+<body>
+</body>
+<script>
+sr.config({
+    baseUrl: "js",
+    paths: {
+        "haha": "file/file02"
+    }
+});
+require('file/file01')
+    .done(function() {
+        println('file01 is ok!!');
+    });
+
+require('haha').done(function() {
+    println('file02 is ok');
+});
+</script>
+
+</html>
