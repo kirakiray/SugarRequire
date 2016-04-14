@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,user-scalable=no">
-    <title>config</title>
+    <title>super_define</title>
     <script src="js/public.js"></script>
     <script src="../src/sr.js"></script>
 </head>
@@ -13,19 +13,18 @@
 </body>
 <script>
 sr.config({
-    baseUrl: "js",
-    paths: {
-        "haha": "file/file02"
-    }
+    baseUrl: "js"
 });
-require('file/file01')
-    .done(function() {
-        println('file01 is ok!!');
+require('define/define09')
+    .done(function(data) {
+        println(data.val);
+        console.log(data);
+    })
+    .require('define/define06')
+    .done(function(data) {
+        println(data.val);
+        console.log(data);
     });
-
-require('haha').done(function() {
-    println('file02 is ok');
-});
 </script>
 
 </html>

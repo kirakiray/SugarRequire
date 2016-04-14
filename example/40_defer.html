@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,user-scalable=no">
-    <title>require</title>
+    <title>defer</title>
     <script src="js/public.js"></script>
     <script src="../src/sr.js"></script>
 </head>
@@ -15,8 +15,8 @@
 sr.config({
     baseUrl: "js"
 });
-require('define/define01').done(function(data) {
-    println(data.val);
+require('defer/defer01').done(function(data) {
+    println(data);
     console.log(data);
 });
 </script>

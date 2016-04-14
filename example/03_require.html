@@ -12,9 +12,15 @@
 <body>
 </body>
 <script>
-require('js/file/file03').require('js/file/file02').require('js/file/file01').done(function() {
-    println('怎么刷新顺序都保持一致');
-});
+require('js/file/file03')
+    .done(function() {
+        println('file03 done');
+    })
+    .require('js/file/file02')
+    .require('js/file/file01')
+    .done(function() {
+        println('怎么刷新顺序都保持一致');
+    });
 </script>
 
 </html>
