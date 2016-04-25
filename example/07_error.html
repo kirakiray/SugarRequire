@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no">
+    <title>error</title>
+    <script src="js/public.js"></script>
+    <script src="../src/sr.js"></script>
+</head>
+
+<body>
+</body>
+<script>
+sr.config({
+    baseUrl: "js"
+});
+
+//设置error函数，只要加载模块错误就会触发它
+sr.error = function(e) {
+    println('haha , Somewhere found wrong');
+    console.log('Somewhere found wrong', e);
+};
+
+require('file/file01', 'haha')
+    .done(function() {
+        println('succeed');
+    })
+    .fail(function(e) {
+        //里面出现加载错误，都会走fail方法
+        println('error');
+        console.log(e);
+    });
+</script>
+
+</html>
