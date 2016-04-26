@@ -23,7 +23,7 @@ BrowserRequire 1.x中的插件不适用于当前2.0版本。
 
 **doc**——SugarRequire的使用文档；
 
-**example**——SugarRequire的案例；
+**example**——SugarRequire的简易案例；
 
 **plugin**——SugarRequire官方提供的简易插件；
 
