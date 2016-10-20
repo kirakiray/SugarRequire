@@ -464,94 +464,94 @@
         },
         //载入前的中介，判断文件类型和缓存状态
         agent: function(url, sugarRequire) {
-            //判断库存内是否有资源
-            var tarData = dataMap[url];
+            return function(resolve, reject) {
+                //判断库存内是否有资源
+                var tarData = dataMap[url];
 
-            if (!tarData) {
-                //第一次载入这个资源
-                var proms = [];
-                //没有这个资源则载入这个资源
-                tarData = dataMap[url] = {
-                    // type: "",
-                    // m: "",
-                    // script: "",
-                    state: LOADING,
-                    //需要执行的resolve函数
-                    proms: proms
-                }
+                if (!tarData) {
+                    //第一次载入这个资源
+                    var proms = [];
+                    //没有这个资源则载入这个资源
+                    tarData = dataMap[url] = {
+                        // type: "",
+                        // m: "",
+                        // script: "",
+                        state: LOADING,
+                        //需要执行的resolve函数
+                        proms: proms
+                    }
 
-                //第一次加载
-                tarData.script = R.loadScript(url, function() {
-                    var tempData = baseResources.tempM;
-                    var tempType = tempData.type || "file";
+                    //第一次加载
+                    tarData.script = R.loadScript(url, function() {
+                        var tempData = baseResources.tempM;
+                        var tempType = tempData.type || "file";
 
-                    //设置加载的类型
-                    tarData.type = tempType;
+                        //设置加载的类型
+                        tarData.type = tempType;
 
-                    //加载状态
-                    tarData.state = LOADED;
+                        //加载状态
+                        tarData.state = LOADED;
 
-                    //如果是define类型
-                    switch (tempType) {
-                        case DEFINE:
-                            //define模块
-                            R.setDefine(url, function(moduleData) {
-                                //设置完成
+                        //如果是define类型
+                        switch (tempType) {
+                            case DEFINE:
+                                //define模块
+                                R.setDefine(url, function(moduleData) {
+                                    //设置完成
+                                    tarData.state = FINISH;
+                                    each(proms, function(e) {
+                                        //返回完成
+                                        e.res(moduleData);
+                                    });
+                                    delete tarData.proms;
+                                });
+                                break;
+                            case DEFER:
                                 tarData.state = FINISH;
+                                //defer模块
+                                var deferFun = tarData.m = tempData.val;
+                                each(proms, function(e) {
+                                    //代理传送门
+                                    R.runDefer(url, e.d, e.res, e.rej);
+                                });
+                                break;
+                            default:
+                                tarData.state = FINISH;
+                                //是普通文件
                                 each(proms, function(e) {
                                     //返回完成
-                                    e.res(moduleData);
+                                    e.res();
                                 });
-                                delete tarData.proms;
-                            });
-                            break;
-                        case DEFER:
-                            tarData.state = FINISH;
-                            //defer模块
-                            var deferFun = tarData.m = tempData.val;
-                            each(proms, function(e) {
-                                //代理传送门
-                                R.runDefer(url, e.d, e.res, e.rej);
-                            });
-                            break;
-                        default:
-                            tarData.state = FINISH;
-                            //是普通文件
-                            each(proms, function(e) {
-                                //返回完成
-                                e.res();
-                            });
-                            break;
-                    }
-
-                    //设定模块id
-                    var ids = tempData.ids;
-                    if (ids) {
-                        if (getType(ids) == "string") {
-                            dataMap[ids] = tarData;
-                        } else if (getType(ids) == "array") {
-                            each(ids, function(e) {
-                                dataMap[e] = tarData;
-                            });
+                                break;
                         }
-                    }
 
-                    //清空信息
-                    baseResources.tempM = {};
-                }, function() {
-                    tarData.state = ERROR;
-                    each(proms, function(e) {
-                        e.rej({
-                            state: ERROR,
-                            url: url
+                        //设定模块id
+                        var ids = tempData.ids;
+                        if (ids) {
+                            if (getType(ids) == "string") {
+                                dataMap[ids] = tarData;
+                            } else if (getType(ids) == "array") {
+                                each(ids, function(e) {
+                                    dataMap[e] = tarData;
+                                });
+                            }
+                        }
+
+                        //清空信息
+                        baseResources.tempM = {};
+                    }, function() {
+                        tarData.state = ERROR;
+                        each(proms, function(e) {
+                            e.rej({
+                                state: ERROR,
+                                url: url
+                            });
                         });
+                        //清空信息
+                        baseResources.tempM = {};
                     });
-                    //清空信息
-                    baseResources.tempM = {};
-                });
-            }
+                }
 
-            return function(resolve, reject) {
                 switch (tarData.state) {
                     case FINISH:
                         //加载完成了
