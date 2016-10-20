@@ -1,544 +1,74 @@
-(function(Global) {
+(function(glo) {
     "use strict";
-    //baseData
-    //自定义的路径
-    var paths = {};
-    //载入模块用的map对象
-    var dataMap = {};
-    var baseResources = {
-        paths: paths,
-        //js模块相对路径
-        baseUrl: "",
-        dataMap: dataMap,
-        //临时挂起的模块对象
-        tempM: {}
-    };
-    //当前html的dirname
-    var rootdir = "";
-    //引用url和相对目录
-    var LocalReg = /^\.\//;
-    var PathdirarrReg = /.+?\/\//;
+    //common
+    //没开始载入
+    var WAIT = 'wait';
+    //执行中
+    var PENDING = 'pending';
+    //执行完成
+    var FULFILLED = 'fulfilled';
+    //执行失败
+    var REJECTED = 'rejected';
+    //后代链触发
+    var WOOD = "wood";
+    //后代链全部触发完成
+    var FIRE = 'fire';
 
-    //外部用统一对象
-    var sr = {
-        //设置基础配置方法
-        config: function(data) {
-            /*var data = {
-                //根目录
-                baseUrl: "",
-                //快捷映射目录
-                paths: {}
-            };*/
-            //配置baseurl
-            baseResources.baseUrl = data.baseUrl;
-            //配置paths
-            extend(paths, data.paths);
-        },
-        //同步载入模块数据
-        //只能使用绝对路径（相对baseUrl）
-        //只能返回载入完成的define模块
-        use: function(url) {
-            var dataObj = dataMap[R.getPath(url)];
-            if (dataObj && dataObj.status == DONE && dataObj.type == DEFINE) {
-                return dataObj.content.exports;
+    //function
+    var emptyFun = function() {};
+    //转换成数组
+    var transToArray = function(args) {
+        return Array.prototype.slice.call(args, 0);
+    };
+    //获取类型
+    var getType = function(value) {
+        return Object.prototype.toString.call(value).toLowerCase().replace(/(\[object )|(])/g, '');
+    };
+    //遍历
+    var each = (function() {
+        if ([].forEach) {
+            return function(arr, fun) {
+                return arr.forEach(fun);
             }
-        },
-        //判断是否存在模块，并返回模块对应数据
-        //只能使用绝对路径（相对baseUrl）
-        //has有返回数据并不代表完全加载完成
-        has: function(url) {
-            var dataObj = dataMap[R.getPath(url)];
-            if (dataObj) {
-                return {
-                    status: dataObj.status,
-                    type: dataObj.type
+        } else {
+            return function(arr, fun) {
+                for (var i = 0, len = arr.length; i < len; i++) {
+                    fun(arr[i], i);
                 };
-            }
-        },
-        //删除对应url数据
-        "delete": function(url) {
-            var aburl = R.getPath(url);
-            var dataObj = dataMap[aburl];
-            dataObj && dataObj.script.remove();
-            delete dataMap[aburl];
-        },
-        //开发扩展用函数
-        extend: function(fun) {
-            fun(baseResources, R, Require, GatherEvent);
-        },
-        //出现错误触发的函数 
-        error: function(err) {
-            console.log(err);
-        },
-        //版本号
-        version: "2"
+            };
+        }
+    })();
+    //合并对象
+    var extend = function(def, opt) {
+        for (var i in opt) {
+            def[i] = opt[i];
+        }
+        return def;
     };
-
-    //COMMON
-    var nextTickArr = [],
-        isTick = false,
-        windowHead = document.head;
-    var FIRSTREQUIREEND = "firstRequireEnd";
-    var CHAINEND = "chainend";
-    var READY = "ready";
-    var ALLLOADEND = "allloadend";
-    var LOADING = "loading";
-    var DONE = "done";
-    var ERROR = "error";
-    var SUCCEED = "succeed";
-    var DEFINE = "define";
-    var DEFER = "defer";
-    var ADDDELY = "adddely";
-
-
-    //public function
-    var emptyFun = function() {},
-        /**
-           异步调用方法
-           @param {function} callback 异步执行的函数
-        */
-        nextTick = function(callback) {
+    //改良异步方法
+    var nextTick = (function() {
+        var isTick = false;
+        var nextTickArr = [];
+        return function(fun) {
             if (!isTick) {
                 isTick = true;
                 setTimeout(function() {
                     for (var i = 0; i < nextTickArr.length; i++) {
                         nextTickArr[i]();
                     }
-                    /*each(nextTickArr, function(e) {
-                        e();
-                    });*/
                     nextTickArr = [];
                     isTick = false;
                 }, 0);
             }
-            nextTickArr.push(callback);
-        },
-        /**
-            判断传入值的类型
-            @param {All} value 任意值
-            @return {string} 返回当前值的类型的字符串 string|object|number...
-        */
-        getType = function(value) {
-            return Object.prototype.toString.call(value).toLowerCase().replace(/(\[object )|(])/g, '');
-        },
-        /**
-            fix
-            继承对象的方法，同Object.create
-            @param {object} 需要继承的对象
-            @return {object} 继承后的新对象
-        */
-        create = Object.create || function(obj) {
-            var f = function() {};
-            f.prototype = obj;
-            return new f();
-        },
-        /**
-            转换为数组
-            @param {arguments} args 函数的arguments对象
-            @return {array} arguments转换的数组
-        */
-        transToArray = function(args) {
-            return Array.prototype.slice.call(args);
-        },
-        /*
-            适用于数组的map方法
-            @param {array} arr 需要遍历的数组
-            @param {function} fun 遍历时的callback
-        */
-        each = (function() {
-            if ([].forEach) {
-                return function(arr, fun) {
-                    return arr.forEach(fun);
-                }
-            } else {
-                return function(arr, fun) {
-                    for (var i = 0, len = arr.length; i < len; i++) {
-                        fun(arr[i], i);
-                    };
-                };
-            }
-        })(),
-        /**
-            合并对象，like jQuery.extend
-            @param {Object} def 后面的对象要合并到该对象上
-            @param {Object} opt 要向前合并的对象
-            @return {Object} 第一个被合并的对象
-        */
-        extend = function(def, opt) {
-            for (var i in opt) {
-                def[i] = opt[i];
-            }
-            return def;
-        },
-        /**
-            给字符串去掉.js等后缀
-            @param {string} value 传入的文件名（有无带.js后缀都可以）
-            @return {string} 返回去掉.js后缀的文件名
-        */
-        removeJS = function(value) {
-            //去掉后缀
-            value = value.replace(/\?.+$/, "");
-            return value.replace(/.js$/g, "");
-        },
-        /**
-            在字符串后面加上.js后缀
-            @param {string} value 传入文件名
-            @return {string} 添加.js后缀的文件名
-        */
-        concatJS = function(value) {
-            return value.concat('.js');
-        },
-        /*
-            获取当前目录路径
-            @param {string} filename 传入当前文件的url
-        */
-        dirname = function(filename) {
-            // var redirname = "";
-            // var filenameArr = filename.split('/');
-            // var dirnameLastId = filenameArr.length - 1;
-            // each(filenameArr, function(e, i) {
-            //     if (dirnameLastId > i) {
-            //         redirname += e + '/';
-            //     }
-            // });
-            // return redirname;
-            var filenameArr = filename.split('/');
-            filenameArr = filenameArr.slice(0, -1);
-            return filenameArr.join('/') + '/';
+            nextTickArr.push(fun);
         };
-
-
-    //public class
-    var BindEvent = function() {
-        this._map = {};
-        this.sub = [];
-        this._ever = {};
+    })();
+    //获取目录地址方法
+    var getDir = function(url) {
+        var urlArr = url.match(/(.+\/).+/);
+        return urlArr && urlArr[1];
     };
-    BindEvent.fn = BindEvent.prototype;
-
-    //获取事件组对象
-    BindEvent.fn._get = function(eventName) {
-        return this._map[eventName] || (this._map[eventName] = {
-            eves: []
-        });
-    };
-
-    //注销事件
-    BindEvent.fn.off = function(eventName, callback) {
-        //获取事件组对象
-        var evesObj = this._get(eventName);
-        //根据参数进行事件清理
-        //清理所有事件
-        if (!arguments.length) {
-            this._map = [];
-        }
-
-        //清理指定事件
-        if (eventName && !callback) {
-            this._map[eventName].eves = [];
-        }
-
-        //清理指定callback
-        if (eventName && callback) {
-            var newEventGroup = [];
-            each(evesObj.eves, function(e) {
-                if (e._call != callback) {
-                    newEventGroup.push(e);
-                }
-            });
-            evesObj.eves = newEventGroup;
-        }
-    };
-
-    //on 和 one 内部使用的ever触发事件  返回值为是否retrun
-    var everOne = function(everData, eventName, callback, data) {
-        if (everData) {
-            var callObj = {
-                //bData: data,
-                data: everData.data,
-                name: eventName
-            };
-            if (everData.type == 1) {
-                //状态1为同步执行
-                callback(callObj, data);
-            } else if (everData.type == 2) {
-                //状态2为异步执行
-                nextTick(function() {
-                    callback(callObj, data);
-                });
-            }
-            return true;
-        }
-        return false;
-    };
-
-    //注册事件
-    BindEvent.fn.on = function(eventName, callback, data) {
-        //获取事件数组
-        var evesObj = this._get(eventName);
-
-        //即时激活事件
-        var isReturn = everOne(this._ever[eventName], eventName, callback, data);
-        if (isReturn) {
-            return;
-        }
-
-        //添加事件
-        evesObj.eves.push({
-            data: data,
-            _call: callback
-        });
-    };
-
-    //注册一次性事件
-    BindEvent.fn.one = function(eventName, callback, data) {
-        //获取事件组对象
-        var evesObj = this._get(eventName);
-
-        //即时激活事件
-        var isReturn = everOne(this._ever[eventName], eventName, callback, data);
-        if (isReturn) {
-            return;
-        }
-
-        //添加事件
-        evesObj.eves.push({
-            one: true,
-            data: data,
-            _call: callback
-        });
-    };
-
-    //触发事件
-    BindEvent.fn.trigger = function(eventName, tData) {
-        //获取事件组对象
-        var evesObj = this._get(eventName);
-
-        //优先执行first call
-        var firstEvent = evesObj._first;
-        firstEvent && firstEvent._call({
-            //bData: firstEvent.data,
-            data: tData,
-            name: eventName
-        }, firstEvent.data);
-
-        //遍历数组内函数
-        var newEventGroup = [];
-        each(evesObj.eves, function(e) {
-            e._call({
-                //bData: e.data,
-                data: tData,
-                name: eventName
-            }, e.data);
-            //添加非一次性事件
-            if (!e.one) {
-                newEventGroup.push(e);
-            }
-        });
-
-        //重置事件数组
-        evesObj.eves = newEventGroup;
-
-        //触发克隆对象
-        var subbindevent = this.sub;
-        each(subbindevent, function(e) {
-            e.trigger(eventName, tData);
-        });
-
-        //最后执行last call
-        var lastEvent = evesObj._last;
-        lastEvent && lastEvent._call({
-            //bData: lastEvent.data,
-            data: tData,
-            name: eventName
-        }, lastEvent.data);
-    };
-
-    //永久性触发事件
-    BindEvent.fn.ever = function(eventName, data, sync) {
-        var everObject = {};
-        if (sync) {
-            everObject = {
-                //状态1为同步执行
-                type: 1,
-                data: data
-            };
-        } else {
-            everObject = {
-                //状态2为异步执行
-                type: 2,
-                data: data
-            };
-        }
-        //加入ever数据
-        this._ever[eventName] = everObject;
-        //先触发一次相应事件
-        this.trigger(eventName, data);
-        //清除事件
-        this.off(eventName);
-    };
-
-    //绝对会在队列第一触发事件
-    BindEvent.fn.first = function(eventName, callback, data) {
-        //获取事件组对象
-        var evesObj = this._get(eventName);
-        evesObj._first = {
-            data: data,
-            _call: callback
-        };
-    };
-
-    //绝对会在队列最后触发事件
-    BindEvent.fn.last = function(eventName, callback, data) {
-        //获取事件组对象
-        var evesObj = this._get(eventName);
-        evesObj._last = {
-            data: data,
-            _call: callback
-        };
-    };
-
-    //克隆对象（父对象触发事件，克隆对象也会触发相应事件；克隆对象触发事件，不会影响父对象）
-    BindEvent.fn.clone = function() {
-        var subEvent = new BindEvent();
-        //继承ever数据
-        subEvent._ever = create(this._ever);
-        this.sub.push(subEvent);
-        return subEvent;
-    };
-
-    //分散集合器
-    //只有当所有子方法运行，并且init后才会触发chainend事件
-    //继承BindEvent
-    var GatherEvent = function(chainEndName) {
-        BindEvent.apply(this, arguments);
-        //记录id
-        this._cid = 0;
-        //记录数据用对象
-        this._dMap = [];
-        //是否init
-        this._isInit = false;
-        //是否create
-        this._isCreate = false;
-        //记录chainend的激活名
-        this._ceName = chainEndName || CHAINEND;
-    };
-    GatherEvent.fn = GatherEvent.prototype = create(BindEvent.prototype);
-    //制造子方法
-    GatherEvent.fn.create = function() {
-        this._isCreate = true;
-        var _this = this;
-        //当前id并递增
-        var id = this._cid++;
-        return function(data) {
-            //递减id
-            _this._cid--;
-            //填充写入数据
-            _this._dMap[id] = data;
-            //判断是否触发
-            if (_this._isInit && _this._cid == 0) {
-                _this.trigger(_this._ceName, _this._dMap);
-            }
-        };
-    };
-    //准备完毕的方法
-    GatherEvent.fn.init = function() {
-        this._isInit = true;
-        if (this._isCreate && this._cid == 0) {
-            this.trigger(this._ceName, this._dMap);
-        }
-    };
-
-    //business class
-    var Require = function(urls, _originGather) {
-        if (_originGather) {
-            this._origin = _originGather;
-            this._rEvent = new BindEvent();
-        } else {
-            this._origin = this._rEvent = new GatherEvent();
-            this._origin.init();
-        }
-        var _this = this;
-
-        //完成ready后进行subFun的运行
-        var subFun = this._origin.create();
-        this._rEvent.last(READY, function() {
-            subFun();
-        });
-
-        this._rEvent.on(READY, function(e) {
-            _this.ready.apply(this, e.data);
-        });
-        this.doing(function(data) {
-            _this.loading(data);
-        });
-        this.fail(function(data) {
-            _this.error(data);
-        });
-
-        //记录链上公用数据
-        this.pub = {};
-
-        //记录需要加载的资源
-        this._urls = urls;
-
-        //后续require链
-        this._subRequire = [];
-    };
-    Require.fn = Require.prototype;
-    Require.fn.ready = emptyFun;
-    Require.fn.error = emptyFun;
-    Require.fn.loading = emptyFun;
-    Require.fn.done = function(fun) {
-        var _this = this;
-        this._rEvent.on(READY, function(e) {
-            //fun(e.data);
-            fun.apply(_this, e.data);
-        });
-        return this;
-    };
-    Require.fn.doing = function(fun) {
-        this._rEvent.on(LOADING, function(e) {
-            fun(e.data);
-        });
-        return this;
-    };
-    Require.fn.fail = function(fun) {
-        this._rEvent.on(ERROR, function(e) {
-            fun(e.data);
-        });
-        return this;
-    };
-    Require.fn.post = function(data) {
-        this.data = data;
-        return this;
-    };
-    Require.fn.hand = function(data) {
-        each(this._subRequire, function(e) {
-            e.data = data;
-        });
-    };
-    Require.fn.require = function() {
-        var urls = transToArray(arguments);
-        var subRequire = new Require(urls, this._origin);
-        this._subRequire.push(subRequire);
-        subRequire.pub = this.pub;
-        return subRequire;
-    };
-
-    //business function
-    //获取script
-    var getScriptTag = function(url) {
-        var script = document.createElement('script');
-        //填充相应数据
-        script.type = 'text/javascript';
-        script.setAttribute('async', true);
-        //填充url
-        script.src = url;
-        return script;
-    };
-
-    //修正上级目录字符串 
+    //修正字符串路径
     var removeParentPath = function(url) {
         var urlArr = url.split(/\//g);
         var newArr = [];
@@ -552,446 +82,682 @@
         return newArr.join('/');
     };
 
-    //main
-    var R = {
-        //设置define模块
-        setDefine: function(scriptData, rEvent) {
-            var tempM = baseResources.tempM;
-            //判断value类型进行剥取模块内容
-            var tempValueType = getType(tempM.value);
-            //模块结构 
-            var modules = {
-                exports: {}
-            };
-            //赋予值
-            scriptData.content = modules;
-            switch (tempValueType) {
-                case "function":
-                    //是否有使用过内部require
-                    var hasUseRequire = false;
-                    var isRequireEnd = false;
+    //class
+    //定制轻量低占内存事件机
+    function SimpleEvent() {
+        this._eves = {};
+    };
+    SimpleEvent.fn = SimpleEvent.prototype;
+    SimpleEvent.fn._get = function(eventName) {
+        return this._eves[eventName] || (this._eves[eventName] = { e: [], o: [] });
+    };
+    //定义一次性事件
+    SimpleEvent.fn.on = function(eventName, fun) {
+        this._get(eventName).e.push(fun);
+    };
+    //定义一次性事件
+    SimpleEvent.fn.one = function(eventName, fun) {
+        this._get(eventName).o.push(fun);
+    };
+    //定义优先执行函数
+    SimpleEvent.fn.first = function(eventName, fun) {
+        this._get(eventName).f = fun;
+    };
+    //定义最后执行函数
+    SimpleEvent.fn.last = function(eventName, fun) {
+        this._get(eventName).l = fun;
+    };
+    //注销事件
+    SimpleEvent.fn.off = function(eventName) {
+        delete this._eves[eventName];
+    };
+    //触发事件
+    SimpleEvent.fn.emit = function(eventName, data) {
+        var eveObj = this._get(eventName);
+        //触发first
+        var firstFun = eveObj.f;
+        firstFun && firstFun({
+            name: eventName,
+            type: 'first'
+        }, data);
+        delete eveObj.f;
+        //触发事件队列
+        var oneArr = eveObj.o;
+        while (oneArr.length) {
+            oneArr.shift()({
+                name: eventName,
+                type: "one"
+            }, data);
+        }
+        each(eveObj.e, function(e) {
+            e({
+                name: eventName,
+                type: "on"
+            }, data);
+        });
+        //触发last
+        var lastFun = eveObj.l;
+        lastFun && lastFun({
+            name: eventName,
+            type: 'last'
+        }, data);
+        delete eveObj.l;
+    };
 
-                    //首层require集合器
-                    var firstRequireGather = new GatherEvent(FIRSTREQUIREEND);
-
-                    var reValue = tempM.value.call({
-                        FILE: scriptData.script.src
-                    }, function() {
-                        //设置使用过内部require
-                        hasUseRequire = true;
-
-                        //继承使用require
-                        var rObj = R.require.apply(R, arguments);
-
-                        //判断是否结束子层require
-                        if (!isRequireEnd) {
-                            //设置关联数据
-                            rObj.pub._par = scriptData.script.src;
-                            rEvent.trigger(ADDDELY, rObj);
-
-                            //生成子集合器
-                            var subRequire = firstRequireGather.create();
-
-                            //链完成后触发子集合器
-                            rObj._rEvent.on(CHAINEND, subRequire);
-                        }
-
-                        //返回值
-                        return rObj;
-                    }, modules.exports, modules);
-
-                    //设置结束
-                    isRequireEnd = true;
-
-                    if (!hasUseRequire) {
-                        //没有使用内部require
-                        //优先使用返回值
-                        reValue && (modules.exports = reValue);
-
-                        //永久激活模块
-                        scriptData.status = DONE;
-                        scriptData.event.ever(DONE, modules.exports);
-                    } else {
-                        //使用了内部的require
-                        //初始化集合器 
-                        firstRequireGather.init();
-
-                        //集合完毕后永久激活模块
-                        firstRequireGather.on(FIRSTREQUIREEND, function() {
-                            //优先使用返回值
-                            reValue && (modules.exports = reValue);
-                            //修正数据
-                            scriptData.status = DONE;
-                            scriptData.event.ever(DONE, modules.exports);
-                        });
-                    }
-                    break;
-                default:
-                    //模块数据永久done
-                    scriptData.status = DONE;
-                    modules.exports = tempM.value
-                    scriptData.event.ever(DONE, tempM.value);
-                    break;
-            };
-        },
-        //defer模块处理装置（函数）
-        deferBrain: function(scriptData, rEvent) {
-            //获取子event对象 
-            var eventArr = scriptData.event.sub;
-
-            //对defer延迟执行
-            each(eventArr, function(e) {
-                scriptData.content.call({
-                    FILE: scriptData.script.src,
-                    data: e.data
-                }, function() {
-                    //继承使用require
-                    var rObj = R.require.apply(R, arguments);
-                    //设置关联数据
-                    rObj.pub._par = scriptData.script.src;
-                    rEvent.trigger(ADDDELY, rObj);
-                    return rObj;
-                }, function(succeedData) {
-                    //resolve
-                    e.trigger(DONE, succeedData);
-                }, function(errorData) {
-                    //reject
-                    e.trigger(ERROR, errorData);
-                });
-            });
-
-            //清空子事件对象
-            scriptData.event.sub = [];
-        },
-        //根据temM获取相应内容
-        mProcess: function(scriptData, rEvent) {
-            //获取事件对象
-            var scriptEvent = scriptData.event;
-            var tempM = baseResources.tempM;
-
-            //设置模块id
-            if (tempM) {
-                var name = tempM.name;
-                switch (getType(name)) {
-                    case "array":
-                        each(name, function(e) {
-                            dataMap[e] = scriptData;
-                        });
-                        break;
-                    case "string":
-                        dataMap[name] = scriptData;
-                        break;
+    function SugarPromise(args) {
+        var _this = this;
+        var eve = _this._e = new SimpleEvent();
+        _this.state = WAIT;
+        _this.args = args;
+        //下一组记录数据
+        var _next = _this._next = [];
+        //当前组完成后
+        eve.last(FULFILLED, function() {
+            var fireFun = function() {
+                eve.emit(FIRE);
+                delete _this.data;
+                //判断是否有父级，有则执行引燃WOOD
+                if (_this._par) {
+                    _this._par._e.emit(WOOD);
                 }
+                fireFun = null;
+            };
+
+            //判断当前是否有后代
+            if (!_next.length) {
+                //没有后代的话，点火引发FIRE。
+                fireFun();
+            } else {
+                //有后代则后代执行初始化
+                each(_next, function(e) {
+                    e._init();
+                });
+
+                //给有后代的收集
+                var woodCount = 0;
+                eve.on(WOOD, function(e) {
+                    woodCount++;
+                    if (_next.length == woodCount) {
+                        fireFun();
+                        eve.off(WOOD);
+                    }
+                });
+            }
+        });
+    };
+    SugarPromise.fn = SugarPromise.prototype;
+    //初始化方法
+    SugarPromise.fn._init = function() {
+        var _this = this,
+            eve = _this._e,
+            args = _this.args;
+        _this.state = PENDING;
+        var argLen = args.length;
+        //数据正确的反馈数组
+        var argsData = [];
+        //数据错误的反馈数组
+        var errData;
+        if (!argLen) {
+            _this.state = FULFILLED;
+            eve.emit(FULFILLED, {
+                datas: argsData,
+                state: FULFILLED
+            });
+            return;
+        }
+
+        //pending的方法
+        var callPending = function(data, state, index) {
+            eve.emit(PENDING, {
+                //数据
+                data: data,
+                //状态
+                state: state,
+                //序号
+                no: index
+            });
+            argLen--;
+            if (!argLen) {
+                //如果是错误状态的话
+                if (errData) {
+                    eve.emit(REJECTED, errData);
+                } else {
+                    //全部数据加载成功
+                    _this.state = FULFILLED;
+                    eve.emit(FULFILLED, {
+                        datas: argsData,
+                        state: FULFILLED
+                    });
+                }
+                //垃圾回收
+                callPending = errData = argsData = null;
+                eve.off(PENDING);
+                eve.off(REJECTED);
+                eve.off(FULFILLED);
+            }
+        };
+
+        each(args, function(e, i) {
+            e.call(_this, function(succeedData) {
+                //resolve
+                //设置数据
+                argsData[i] = succeedData;
+                callPending(succeedData, FULFILLED, i);
+            }, function(errorData) {
+                //reject
+                _this.state = REJECTED;
+                errData = errData || [];
+                errData.push({
+                    no: i,
+                    data: errorData
+                });
+                callPending(errorData, REJECTED, i);
+            });
+        });
+    };
+    //完成时触发
+    SugarPromise.fn.then = function(fun) {
+        var _this = this;
+        _this._e.one(FULFILLED, function(e, data) {
+            //把数据带过去
+            fun.apply(_this, data.datas);
+        });
+        return _this;
+    };
+    //错误抓取
+    SugarPromise.fn.catch = function(fun) {
+        this._e.one(REJECTED, function(e, data) {
+            fun(data);
+        });
+        return this;
+    };
+    //过程中
+    SugarPromise.fn.pend = function(fun) {
+        this._e.on(PENDING, function(e, data) {
+            fun(data);
+        });
+        return this;
+    };
+    //后续链
+    SugarPromise.fn.prom = function() {
+        var args = transToArray(arguments);
+        var sp = new SugarPromise(args);
+        //设置parent
+        sp._par = this;
+        //设置下一批
+        this._next.push(sp);
+        return sp;
+    };
+    //传递数据
+    SugarPromise.fn.send = function(data) {
+        this.data = data;
+        return this;
+    };
+    //握手给下一级数据
+    SugarPromise.fn.gift = function(data) {
+        each(this._next, function(e) {
+            e.send(data);
+        });
+    };
+    //后代链全部完成
+    SugarPromise.fn.fire = function(fun) {
+        this._e.one(FIRE, fun);
+        return this;
+    };
+    //main
+    var prom = function() {
+        var args = transToArray(arguments);
+        var sp = new SugarPromise(args);
+        nextTick(function() {
+            sp._init();
+        });
+        return sp;
+    };
+
+    //SugarRequire
+    function SugarRequire(args, pubData, p) {
+        //转换成数组
+        args = transToArray(args);
+
+        //添加共享数据对象
+        this._pub = pubData || {};
+
+        var promRunArr = R.toProm(args, this);
+        if (p) {
+            this._p = p.prom.apply(p, promRunArr);
+        } else {
+            this._p = prom.apply(glo, promRunArr);
+        }
+        this._args = args;
+    };
+    SugarRequire.fn = SugarRequire.prototype;
+    SugarRequire.fn.require = function() {
+        var srObj = new SugarRequire(arguments, this._pub, this._p);
+        return srObj;
+    };
+    SugarRequire.fn.pend = function(fun) {
+        var _this = this;
+        _this._p.pend(function(e) {
+            var redata;
+            if (e.state != FULFILLED) {
+                redata = extend({
+                    val: _this._args[e.no],
+                    no: e.no
+                }, e.data);
+            } else {
+                redata = extend({
+                    val: _this._args[e.no]
+                }, e);
+            }
+            //判断是否error类型，触发sr.error
+            if (redata.state == ERROR) {
+                sr.error(extend({
+                    args: _this._args
+                }, redata));
+            }
+            fun.call(_this, redata);
+        });
+        return _this;
+    };
+    SugarRequire.fn.fail = function(fun) {
+        var _this = this;
+        _this._p.catch(function(e) {
+            var reDataArr = [];
+            each(e, function(e2) {
+                reDataArr.push(extend({
+                    no: e2.no
+                }, e2.data));
+            });
+            fun(reDataArr);
+        });
+        return _this;
+    };
+    SugarRequire.fn.done = function(fun) {
+        var _this = this;
+        _this._p.then(function() {
+            fun.apply(_this, arguments);
+        });
+        return _this;
+    };
+    SugarRequire.fn.post = function(data) {
+        this._p.send(data);
+        return this;
+    };
+    SugarRequire.fn.hand = function(data) {
+        this._p.gift(data);
+        return this;
+    };
+
+    var require = function() {
+        var srObj = new SugarRequire(arguments);
+        return srObj;
+    };
+
+    //相应的字符串常量
+    //define模块类型
+    var DEFINE = "define";
+    //defer模块类型
+    var DEFER = "defer";
+    //加载中的状态
+    var LOADING = "loading";
+    //加载完毕的状态
+    var LOADED = "loaded";
+    var FINISH = "finish";
+    //错误的东西
+    var ERROR = "error";
+
+    //main
+    var windowHead = document.head;
+    //主体快捷目录映射
+    var paths = {};
+    //载入模块用的map对象
+    var dataMap = {};
+    var baseResources = {
+        paths: paths,
+        //js模块相对路径
+        baseUrl: "",
+        dataMap: dataMap,
+        //临时挂起的模块对象
+        tempM: {}
+    };
+    //主要业务逻辑对象
+    var R = {
+        //将地址数组转换成prom callback arguments
+        toProm: function(args, sugarRequire) {
+            var promRunArr = [];
+            each(args, function(e) {
+                var path = R.getPath(e, sugarRequire);
+                promRunArr.push(R.agent(path, sugarRequire));
+            });
+            return promRunArr;
+        },
+        //转换路径
+        getPath: function(pathStr, sugarRequire) {
+            //判断是否已经注册了路径
+            if (dataMap[pathStr]) {
+                return pathStr;
             }
 
-            //根据type获取值
-            switch (tempM.type) {
-                case DEFINE:
-                    //修正数据
-                    scriptData.type = DEFINE;
-                    //设置模块
-                    R.setDefine(scriptData, rEvent);
-                    break;
-                case DEFER:
-                    //修正数据(defer永远不会进入done状态，只会在succeed加载完成状态)
-                    scriptData.type = DEFER;
-                    //设置defer模块内容
-                    scriptData.content = tempM.value;
-                    //中转defer逻辑
-                    R.deferBrain(scriptData, rEvent);
-                    break;
-                default:
-                    //修正数据
-                    scriptData.type = "file";
-                    scriptData.status = DONE;
-                    //普通文件永久性触发done
-                    scriptEvent.ever(DONE);
-                    break;
-            };
-            //还原tempM
-            baseResources.tempM = {};
-        },
-        //加载script用函数
-        loadScript: function(url, callback) {
-            var scriptTag = getScriptTag(url);
-            scriptTag.onload = function() {
-                callback({
-                    status: SUCCEED,
-                    script: scriptTag
-                });
-            };
-            scriptTag.onerror = function() {
-                callback({
-                    status: ERROR,
-                    script: scriptTag
-                });
-            };
-            //ie10对 async支持差的修正方案
-            nextTick(function() {
-                windowHead.appendChild(scriptTag);
-            });
-        },
-        //loadScript前的代理
-        scriptAgent: function(url, requireObj) {
-            var scriptData;
-
-            //判空并填充相应数据
-            if (!dataMap[url]) {
-                var scriptEvent = new BindEvent();
-                var rEvent = scriptEvent.clone();
-                scriptData = dataMap[url] = {
-                    //加载状态
-                    //wait表示等待中     succeed表示script加载完毕（并不代表可立即执行）     error表示加载错误      done表示充分准备完毕加载完成   
-                    status: "wait",
-                    //挂载对象
-                    event: scriptEvent
-                        //标签
-                        //script: "",
-                        //类型 file普通文件  define模块  defer模块
-                        //type: "",
-                        //模块内容
-                        //content : ""
+            //判断是否带协议头部
+            //没有协议
+            if (!/^.+?\/\//.test(pathStr)) {
+                //是否带参数
+                if (!/\?.+$/.test(pathStr) && !/.js$/.test(pathStr)) {
+                    //没有js的话加上js后缀
+                    pathStr += ".js";
                 }
-                R.loadScript(url, function(sData) {
-                    //修正数据
-                    extend(scriptData, sData);
 
-                    //触发加载完成事件
-                    scriptEvent.ever(sData.status);
+                //判断是否有相对路径字样
+                var rePath = pathStr.match(/^\.\/(.+)/);
+                if (rePath) {
+                    //获取相对目录
+                    pathStr = getDir(sugarRequire._pub.rel) + rePath[1];
+                } else {
+                    //加上根目录
+                    pathStr = baseResources.baseUrl + pathStr;
+                }
 
-                    switch (sData.status) {
-                        case SUCCEED:
-                            //中转加工逻辑
-                            R.mProcess(scriptData, rEvent);
+                //去除相对上级目录
+                pathStr = removeParentPath(pathStr);
+            }
+            return pathStr;
+        },
+        //载入前的中介，判断文件类型和缓存状态
+        agent: function(url, sugarRequire) {
+            //判断库存内是否有资源
+            var tarData = dataMap[url];
+
+            if (!tarData) {
+                //第一次载入这个资源
+                var proms = [];
+                //没有这个资源则载入这个资源
+                tarData = dataMap[url] = {
+                    // type: "",
+                    // m: "",
+                    // script: "",
+                    state: LOADING,
+                    //需要执行的resolve函数
+                    proms: proms
+                }
+
+                //第一次加载
+                tarData.script = R.loadScript(url, function() {
+                    var tempData = baseResources.tempM;
+                    var tempType = tempData.type || "file";
+
+                    //设置加载的类型
+                    tarData.type = tempType;
+
+                    //加载状态
+                    tarData.state = LOADED;
+
+                    //如果是define类型
+                    switch (tempType) {
+                        case DEFINE:
+                            //define模块
+                            R.setDefine(url, function(moduleData) {
+                                //设置完成
+                                tarData.state = FINISH;
+                                each(proms, function(e) {
+                                    //返回完成
+                                    e.res(moduleData);
+                                });
+                                delete tarData.proms;
+                            });
+                            break;
+                        case DEFER:
+                            tarData.state = FINISH;
+                            //defer模块
+                            var deferFun = tarData.m = tempData.val;
+                            each(proms, function(e) {
+                                //代理传送门
+                                R.runDefer(url, e.d, e.res, e.rej);
+                            });
+                            break;
+                        default:
+                            tarData.state = FINISH;
+                            //是普通文件
+                            each(proms, function(e) {
+                                //返回完成
+                                e.res();
+                            });
                             break;
                     }
-                });
 
-                //当done完毕后清除所有sub数据 
-                scriptEvent.last(DONE, function() {
-                    scriptEvent.sub = [];
-                });
-
-                //返回事件对象
-                return rEvent;
-            } else {
-                scriptData = dataMap[url];
-                var scriptEvent = scriptData.event;
-                var rEvent = scriptEvent.clone();
-                if (scriptData.type == DEFER) {
-                    nextTick(function() {
-                        //中转defer逻辑
-                        R.deferBrain(scriptData, rEvent);
-                    });
-                    return rEvent;
-                } else {
-                    //返回事件对象
-                    return rEvent;
-                }
-            }
-        },
-        //修正目录的相对位置，根目录等
-        getPath: function(value, relateDir) {
-            //判断是否当前文件目录
-            var isRelate = LocalReg.test(value);
-            var relateNowFileArr = value.split(LocalReg);
-            //获取后缀
-            var suffix = value.match(/\?.+$/g) || [""];
-            if (isRelate) {
-                //如果为两位数则是相对当前文件目录
-                var rePath = relateDir + concatJS(removeJS(relateNowFileArr.slice(-1)[0])) + suffix[0];
-                //获取相对定位
-                rePath = rePath.replace(rootdir, "");
-                //去除上级目录定位(../)
-                rePath = removeParentPath(rePath);
-                return rePath;
-            } else {
-                //相对根目录
-                var baseUrl = baseResources.baseUrl;
-                var path;
-                //判断是否有资源
-                if (dataMap[value]) {
-                    return value;
-                } else if (paths[value]) {
-                    //是否有相对注册路径 
-                    //有相对文件
-                    path = paths[value];
-                } else {
-                    //判断是否有path目录 
-                    var pathdirarr = value.match(PathdirarrReg);
-                    if (pathdirarr) {
-                        if (paths[pathdirarr[0]]) {
-                            path = paths[pathdirarr[0]].concat(value.replace(PathdirarrReg, ""));
-                        } else {
-                            path = value;
+                    //设定模块id
+                    var ids = tempData.ids;
+                    if (ids) {
+                        if (getType(ids) == "string") {
+                            dataMap[ids] = tarData;
+                        } else if (getType(ids) == "array") {
+                            each(ids, function(e) {
+                                dataMap[e] = tarData;
+                            });
                         }
-                    } else {
-                        path = value;
                     }
-                }
-                // var path = paths[value] || value;
-                //带协议的文件
-                if ((/.+:\/\//g).test(path)) {
-                    return path;
-                }
-                var rePath = baseUrl ? baseUrl.concat("/" + path) : path;
-                return concatJS(removeJS(rePath)) + suffix[0];
+
+                    //清空信息
+                    baseResources.tempM = {};
+                }, function() {
+                    tarData.state = ERROR;
+                    each(proms, function(e) {
+                        e.rej({
+                            state: ERROR,
+                            url: url
+                        });
+                    });
+                    //清空信息
+                    baseResources.tempM = {};
+                });
             }
-        },
-        //组载入文件
-        groupScript: function(urls, requireObj) {
-            var gatherFun = new GatherEvent(ALLLOADEND);
 
-            //载入成功的数组 
-            var sucess = [],
-                errors = [];
-            //loading响应事件
-            var triggerLoading = function(i, urls, input, url, status) {
-                //触发loading函数
-                gatherFun.trigger(LOADING, {
-                    id: i,
-                    sucess: sucess,
-                    total: urls,
-                    errors: errors,
-                    input: input,
-                    url: url,
-                    status: status
-                });
+            return function(resolve, reject) {
+                switch (tarData.state) {
+                    case FINISH:
+                        //加载完成了
+                        switch (tarData.type) {
+                            case DEFINE:
+                                resolve(tarData.m);
+                                break;
+                            case DEFER:
+                                R.runDefer(url, this.data, resolve, reject);
+                                break;
+                        }
+                        break;
+                    case LOADING:
+                    case LOADED:
+                        //加载中的
+                        tarData.proms.push({
+                            res: resolve,
+                            rej: reject,
+                            d: this.data
+                        });
+                        break;
+                }
             };
-            each(urls, function(e, i) {
-                var _par = requireObj.pub._par;
-                //根据地址获取固定地址
-                var url = R.getPath(e, _par && dirname(_par));
-                //获取相对资源的事件实例
-                var scriptEvent = R.scriptAgent(url, requireObj, e);
-
-                //挂载自定义数据
-                requireObj.data && (scriptEvent.data = requireObj.data);
-
-                //子函数触发
-                var subFun = gatherFun.create();
-                scriptEvent.one(DONE, function(e2) {
-                    var tData = e2.data;
-
-                    //添加载入成功数组 
-                    sucess.push(e);
-
-                    //清除error事件
-                    scriptEvent.off(ERROR);
-
-                    //触发loading函数
-                    triggerLoading(i, urls, e, url, SUCCEED);
-
-                    //触发子函数并记录数据
-                    subFun(tData);
-                });
-                scriptEvent.one(ERROR, function(e2) {
-                    //添加错误数组
-                    errors.push(e);
-
-                    //清除done事件
-                    scriptEvent.off(DONE);
-
-                    //触发loading
-                    triggerLoading(i, urls, e, url, ERROR);
-
-                    //触发error
-                    var errObj = {
-                        total: urls,
-                        sucess: sucess,
-                        errors: errors,
-                        id: i,
-                        input: e,
-                        url: url
-                    };
-                    gatherFun.trigger(ERROR, errObj);
-                    sr.error(errObj);
-                });
-            });
-            gatherFun.init();
-            return gatherFun;
         },
-        //require拆分中转器
-        splitter: function(requireObj) {
-            //获取urls
-            var urls = requireObj._urls;
-            var groupScriptGatherFun = R.groupScript(urls, requireObj);
-            groupScriptGatherFun.on(ALLLOADEND, function(e) {
-                requireObj._rEvent.trigger(READY, e.data);
-                //获取下一组urls并载入
-                each(requireObj._subRequire, function(e2) {
-                    R.splitter(e2);
-                });
-            });
-            groupScriptGatherFun.on(LOADING, function(e) {
-                requireObj._rEvent.trigger(LOADING, e.data);
-            });
-            groupScriptGatherFun.on(ERROR, function(e) {
-                requireObj._rEvent.trigger(ERROR, e.data);
-            });
-        },
-        //实际用的require
-        require: function() {
-            var urls = transToArray(arguments);
-            var requireObj = new Require(urls);
-            //异步抛入require
+        //加载script的方法
+        loadScript: function(url, callback, errcall) {
+            var script = document.createElement('script');
+            //填充相应数据
+            script.type = 'text/javascript';
+            script.setAttribute('async', true);
+            //填充url
+            script.onload = callback;
+            script.onerror = errcall;
+            script.src = url;
+            //ie10对 async支持差的修正方案
             nextTick(function() {
-                R.splitter(requireObj);
+                windowHead.appendChild(script);
             });
-            return requireObj;
+
+            return script;
         },
-        //定义数据模块
-        define: function(dValue, dName) {
+        //设置define模块
+        setDefine: function(url, callback, errcall) {
+            //获取目标数据
+            var tarData = dataMap[url];
+
+            //获取临时数据
+            var tempData = baseResources.tempM;
+            var tempVal = tempData.val;
+            var innerRequire;
+            //根据类型进行模块设定
+            if (getType(tempVal) == "function") {
+                var exports = {};
+                var moduleData = {
+                    // exports: exports
+                };
+
+                innerRequire = require();
+
+                //设置相对路径
+                innerRequire._pub.rel = url;
+
+                //是否requre完结
+                var isRequireEnd = false;
+
+                moduleData.exports = tempVal.call({ FILE: url }, function() {
+                    var inRequire, args = arguments;
+                    if (isRequireEnd) {
+                        inRequire = new SugarRequire(args, {
+                            rel: url
+                        });
+                    } else {
+                        inRequire = innerRequire.require.apply(innerRequire, args);
+                    }
+
+                    return inRequire;
+                }, exports, moduleData) || exports;
+
+                isRequireEnd = true;
+
+                innerRequire._p.fire(function() {
+                    var _exports = moduleData.exports;
+                    tarData.m = _exports;
+                    callback(_exports);
+                });
+            } else {
+                //非函数则是模块直接内容
+                tarData.m = tempVal;
+                callback(tempVal);
+            }
+
+            return innerRequire;
+        },
+        //运行defer模块
+        runDefer: function(url, data, callback, errcall) {
+            //获取目标数据
+            var tarData = dataMap[url];
+            var deferFun = tarData.m;
+
+            deferFun.call({
+                FILE: url,
+                data: data
+            }, function() {
+                // require
+                return new SugarRequire(arguments, {
+                    rel: url
+                });
+            }, callback, function(data) {
+                errcall({
+                    state: REJECTED,
+                    data: data,
+                    url: url
+                });
+            });
+        },
+        define: function(d, Ids) {
             baseResources.tempM = {
                 type: DEFINE,
-                value: dValue,
-                name: dName
+                val: d,
+                ids: Ids
             };
         },
-        //定义延迟模块
-        defer: function(dValue, dName) {
+        defer: function(d, Ids) {
             baseResources.tempM = {
                 type: DEFER,
-                value: dValue,
-                name: dName
+                val: d,
+                ids: Ids
             };
         }
     };
 
-    //init
+    var outerDefine = function(d, Ids) {
+        R.define.call(R, d, Ids);
+    };
+    var outerDefer = function(d, Ids) {
+        R.defer.call(R, d, Ids);
+    };
+
+    //暴露给外部用对象
+    var sr = {
+        config: function(data) {
+            /*var data = {
+                //根目录
+                baseUrl: "",
+                //快捷映射目录
+                paths: {}
+            };*/
+            //配置baseurl
+            baseResources.baseUrl = data.baseUrl || "";
+            //配置paths
+            extend(paths, data.paths);
+        },
+        define: outerDefine,
+        defer: outerDefer,
+        //直接获取模块
+        use: function(url) {
+            //获取路径
+            var path = R.getPath(url);
+
+            //获取寄存对象
+            var tarData = dataMap[path] || {};
+            var tarType = tarData.type;
+
+            if (tarType == DEFINE) {
+                return tarData.m;
+            } else {
+                return tarType;
+            }
+        },
+        remove: function(url) {
+            //获取路径
+            var path = R.getPath(url);
+
+            //获取寄存对象
+            var tarData = dataMap[path];
+
+            if (tarData) {
+                delete dataMap[path];
+                //告示删除成功
+                return true;
+            }
+        },
+        //扩展函数
+        extend: function(fun) {
+            fun(baseResources, R, SugarRequire);
+        },
+        //加载报错响应
+        error: emptyFun,
+        //版本号
+        version: "3"
+    };
 
     //异步初始化断定
-    var gsr = Global.sr;
+    var gsr = glo.sr;
     if (gsr) {
         var gConfig = gsr.config;
-        if (gConfig) {
-            sr.config(gConfig);
-        }
+        gConfig && sr.config(gConfig);
         var gReady = gsr.ready;
-        if (gReady) {
-            nextTick(gReady);
-        }
+        gReady && nextTick(gReady);
     }
 
-    //rootdir初始化
-    rootdir = dirname(location.href);
+    //init
+    glo.require || (glo.require = require);
+    glo.define || (glo.define = outerDefine);
+    glo.defer || (glo.defer = outerDefer);
+    glo.sr = sr;
+    glo.prom = prom;
 
-    //初始化参数
-    //暴露给外部用函数
-    var ourRequire = function() {
-        return R.require.apply(R, arguments);
-    };
-    var ourDefine = function() {
-        return R.define.apply(R, arguments);
-    };
-    var ourDefer = function() {
-        return R.defer.apply(R, arguments);
-    };
-    sr.require = ourRequire;
-    sr.define = ourDefine;
-    sr.defer = ourDefer;
-    Global.sr = sr;
-    (!Global.require) && (Global.require = ourRequire);
-    (!Global.define) && (Global.define = ourDefine);
-    (!Global.defer) && (Global.defer = ourDefer);
 })(window);

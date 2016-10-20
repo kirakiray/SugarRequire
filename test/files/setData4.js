@@ -1,1 +1,0 @@
-window.wdata4 = "IamData4";

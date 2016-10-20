@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>链状测试</title>
+    <script src="jquery-1.9.1.min.js"></script>
+    <link rel="stylesheet" href="srtest.css">
+    <script src="srtest.js"></script>
+    <script src="../src/sr.js"></script>
+</head>
+
+<body>
+</body>
+<script>
+srtest.init({
+    title: "链状测试"
+});
+sr.config({
+    baseUrl: "js/"
+});
+
+
+var g1 = srtest.group('链测试');
+g1.setOrder({
+    name: "f1"
+}, {
+    name: "f1done"
+}, {
+    name: "f2"
+}, {
+    name: "f2done"
+}, {
+    name: "f3"
+}, {
+    name: "f3done"
+});
+
+window.f1 = function() {
+    g1.order('f1');
+}
+window.f2 = function() {
+    g1.order('f2');
+}
+window.f3 = function() {
+    g1.order('f3');
+}
+
+require('file/f1')
+    .done(function() {
+        g1.order('f1done')
+    })
+    .require('file/f2')
+    .done(function() {
+        g1.order('f2done');
+    })
+    .require('file/f3')
+    .done(function() {
+        g1.order('f3done');
+    });
+
+// prom(function(res, rej) {
+//         console.log(111111111);
+//         setTimeout(function() {
+//             res(1);
+//             console.log();
+//         }, 400);
+//     })
+//     .then(function(data) {
+//         console.log('1done => ', data);
+//     })
+//     .prom(function(res, rej) {
+//         console.log(222222222);
+//         setTimeout(function() {
+//             res(2);
+//         }, 300);
+//     })
+//     .then(function(data) {
+//         console.log('2done => ', data);
+//     })
+//     .prom(function(res, rej) {
+//         console.log(3333333333);
+//         setTimeout(function() {
+//             res(3);
+//         }, 200);
+//     })
+//     .then(function(data) {
+//         console.log('3done => ', data);
+//     });
+</script>
+
+</html>
