@@ -15,14 +15,14 @@
 </body>
 <script>
 srtest.init({
-    title: "链状测试"
+    title: "串行链测试"
 });
 sr.config({
     baseUrl: "js/"
 });
 
 
-var g1 = srtest.group('链测试');
+var g1 = srtest.group('串行链测试');
 g1.setOrder({
     name: "f1"
 }, {
@@ -60,34 +60,28 @@ require('file/f1')
         g1.order('f3done');
     });
 
-// prom(function(res, rej) {
-//         console.log(111111111);
-//         setTimeout(function() {
-//             res(1);
-//             console.log();
-//         }, 400);
-//     })
-//     .then(function(data) {
-//         console.log('1done => ', data);
-//     })
-//     .prom(function(res, rej) {
-//         console.log(222222222);
-//         setTimeout(function() {
-//             res(2);
-//         }, 300);
-//     })
-//     .then(function(data) {
-//         console.log('2done => ', data);
-//     })
-//     .prom(function(res, rej) {
-//         console.log(3333333333);
-//         setTimeout(function() {
-//             res(3);
-//         }, 200);
-//     })
-//     .then(function(data) {
-//         console.log('3done => ', data);
-//     });
+//并行链测试
+var g2 = srtest.group('并行链测试');
+g2.setOrder({
+    name: "d1_d2_done"
+}, [{
+    name: "d3_done"
+}, {
+    name: "d4_done"
+}]);
+
+var d1 = require('def/d1', 'def/d2').done(function(d1, d2) {
+    console.log(d1, "<= =>", d2);
+    g2.order('d1_d2_done');
+});
+d1.require('def/d3').done(function(d3) {
+    console.log(d3);
+    g2.order('d3_done');
+});
+d1.require('def/d4').done(function(d4) {
+    console.log(d4);
+    g2.order('d4_done');
+});
 </script>
 
 </html>

@@ -9,3 +9,5 @@ define(function(require) {
 
     return reobj;
 });
+
+console.log('d4');

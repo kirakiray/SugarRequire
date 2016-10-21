@@ -170,7 +170,9 @@
             } else {
                 //有后代则后代执行初始化
                 each(_next, function(e) {
-                    e._init();
+                    nextTick(function() {
+                        e._init();
+                    });
                 });
 
                 //给有后代的收集
@@ -758,6 +760,5 @@
     glo.define || (glo.define = outerDefine);
     glo.defer || (glo.defer = outerDefer);
     glo.sr = sr;
-    glo.prom = prom;
 
 })(window);

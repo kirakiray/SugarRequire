@@ -9,3 +9,5 @@ define(function(require, exports, module) {
         });
     }, 500);
 });
+
+console.log('d3');
