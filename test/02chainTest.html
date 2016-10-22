@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="srtest.css">
     <script src="srtest.js"></script>
     <script src="../src/sr.js"></script>
+    <script src="../plugin/sr-debug.js"></script>
 </head>
 
 <body>
@@ -82,6 +83,40 @@ d1.require('def/d4').done(function(d4) {
     console.log(d4);
     g2.order('d4_done');
 });
+
+//defer模块混合串并联测试
+
+var g3 = srtest.group('defer模块混合串并联测试');
+g3.setOrder({
+    "name": "g3_1"
+}, [{
+    "name": "g3_2"
+}, {
+    "name": "g3_3"
+}]);
+var l1 = g3.warn('defer2未判定对等');
+var l2 = g3.warn('defer3未判定对等');
+var l3 = g3.warn('defer3_2未判定对等');
+
+var der1 = require('der/defer1', 'der/defer2')
+    .done(function(der1, der2) {
+        der2.val == "I am defer2" && l1.succeed('defer2对等');
+        g3.order('g3_1');
+    });
+
+der1.require('der/defer2', 'der/defer3')
+    .post(8)
+    .done(function(der2, der3) {
+        der3 == 800 && l2.succeed('defer3对等');
+        g3.order('g3_2');
+    });
+
+der1.require('der/defer3', 'der/defer4')
+    .post(13)
+    .done(function(der3, der4) {
+        der3 == 1300 && l3.succeed('defer3_2对等');
+        g3.order('g3_3');
+    });
 </script>
 
 </html>

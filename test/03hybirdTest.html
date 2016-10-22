@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>混合测试</title>
+    <script src="jquery-1.9.1.min.js"></script>
+    <link rel="stylesheet" href="srtest.css">
+    <script src="srtest.js"></script>
+    <script src="../src/sr.js"></script>
+    <script src="../plugin/sr-debug.js"></script>
+</head>
+
+<body>
+</body>
+<script>
+srtest.init({
+    title: "超级大混乱测试"
+});
+sr.config({
+    baseUrl: "js/"
+});
+
+require('def/d1', 'der/defer1', 'file/f1')
+    .done(function(d1data, defer1data) {
+        console.log(arguments);
+    })
+    .require('def/d4', 'der/defer4')
+    .done(function(d4data, defer4data) {
+        console.log(arguments);
+    })
+    .require('hybird1', 'hybird2')
+    .done(function(hybird1data, hybird2data) {
+        console.log(arguments);
+    });
+</script>
+
+</html>

@@ -436,9 +436,12 @@
         //转换路径
         getPath: function(pathStr, sugarRequire) {
             //判断是否已经注册了路径
-            if (dataMap[pathStr]) {
-                return pathStr;
+            if (paths[pathStr]) {
+                pathStr = paths[pathStr];
             }
+            // if (dataMap[pathStr]) {
+            //     return pathStr;
+            // }
 
             //判断是否带协议头部
             //没有协议
@@ -564,6 +567,8 @@
                             case DEFER:
                                 R.runDefer(url, this.data, resolve, reject);
                                 break;
+                            default:
+                                resolve();
                         }
                         break;
                     case LOADING:

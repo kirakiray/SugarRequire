@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="srtest.css">
     <script src="srtest.js"></script>
     <script src="../src/sr.js"></script>
+    <script src="../plugin/sr-debug.js"></script>
 </head>
 
 <body>
@@ -24,6 +25,9 @@ var g1 = srtest.group('基础路径测试');
 
 var log1 = g1.warn('基础路径测试1');
 var log2 = g1.warn('基础路径测试2');
+var log3 = g1.warn('基础路径测试3');
+var log4 = g1.warn('基础路径测试4');
+var log5 = g1.warn('基础路径测试5');
 
 require('js/file/f1')
     .done(function() {
@@ -31,11 +35,26 @@ require('js/file/f1')
     });
 
 sr.config({
-    baseUrl: "js/"
+    baseUrl: "js/",
+    paths: {
+        f3: "file/f3"
+    }
 });
 require('file/f2')
     .done(function() {
         log2.succeed('基础路径测试没问题');
+        require('file/f1')
+            .done(function() {
+                log5.succeed('基础路径测试没问题');
+            });
+    });
+require('f3')
+    .done(function() {
+        log3.succeed('基础路径测试没问题');
+    });
+require('file/f2')
+    .done(function() {
+        log4.succeed('基础路径测试没问题');
     });
 </script>
 
