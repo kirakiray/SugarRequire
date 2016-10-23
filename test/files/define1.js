@@ -1,3 +1,0 @@
-define({
-    val: "define1"
-});

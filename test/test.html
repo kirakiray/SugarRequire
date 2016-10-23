@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>test</title>
+    <script src="SugarRequire.js"></script>
+</head>
+
+<body>
+</body>
+<script>
+sr.config({
+    baseUrl: "js/"
+});
+
+// var f1 = require('fil/f1', 'fil/f2');
+
+// f1.done(function() {
+//     console.log('f1加载完了', arguments);
+// });
+
+// f1.pend(function(e) {
+//     console.log('f1 pendding', e);
+// });
+
+// var f3 = f1.require('fil/f3');
+
+// f3.done(function(e) {
+//     console.log('f3完成', e);
+// });
+
+
+// require('def/d1', 'def/d3')
+//     .pend(function(e) {
+//         console.log('pend2 => ', e);
+//     })
+//     .done(function(data1, data3) {
+//         console.log('d1:', data1, data3);
+//     })
+//     .require('def/d4')
+//     .done(function(data4) {
+//         console.log(data4);
+//     });
+sr.error = function(e) {
+    console.log('sr error => ', e);
+};
+// require('der/defer1', 'der/defer2', "abcabc")
+require('der/defer1', 'def/d3')
+    .done(function() {
+        console.log("done =>", arguments);
+    })
+    .fail(function(e) {
+        console.log('出错了', e);
+    })
+    .pend(function(e) {
+        console.log('pending', e);
+    })
+    .post('shoudaoma ???');
+
+// require('der/defer1')
+//     .done(function(defer1Data2) {
+//         console.log("defer1Data2 =>", defer1Data2);
+//     });
+</script>
+
+</html>

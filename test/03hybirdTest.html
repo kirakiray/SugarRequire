@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>混合测试</title>
+    <script src="jquery-1.9.1.min.js"></script>
+    <link rel="stylesheet" href="srtest.css">
+    <script src="srtest.js"></script>
+    <script src="../src/sr.js"></script>
+    <script src="../plugin/sr-debug.js"></script>
+</head>
+
+<body>
+</body>
+<script>
+srtest.init({
+    title: "超级大混乱测试"
+});
+sr.config({
+    baseUrl: "js/"
+});
+
+var g1 = srtest.group('综合测试');
+g1.setOrder({
+    "name": "arg1"
+}, {
+    "name": "arg2"
+}, {
+    "name": "arg3"
+});
+
+var l1 = g1.warn('d1data未校验');
+var l2 = g1.warn('defer1data未校验');
+var l3 = g1.warn('hybird数据1未校验');
+var l4 = g1.warn('hybird数据2未校验');
+
+require('def/d1', 'der/defer1', 'file/f1')
+    .done(function(d1data, defer1data) {
+        d1data == "I am D1" && l1.succeed('d1data校验成功');
+        defer1data == "I am defer1" && l2.succeed('defer1data校验成功');
+        g1.order('arg1');
+        console.log(arguments);
+    })
+    .require('def/d4', 'der/defer4')
+    .done(function(d4data, defer4data) {
+        g1.order('arg2');
+        console.log(arguments);
+    })
+    .require('hybird1', 'hybird2')
+    .done(function(hybird1data, hybird2data) {
+        g1.order('arg3');
+        console.log(arguments);
+        hybird1data.d4data === hybird2data.d4data && l3.succeed('hybird数据1校验成功');
+        JSON.stringify(hybird1data.defer4data) == JSON.stringify(hybird2data.defer4data) && l4.succeed('hybird数据2校验成功');
+    });
+</script>
+
+</html>
