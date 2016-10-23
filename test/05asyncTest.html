@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>errorTest</title>
+    <script src="jquery-1.9.1.min.js"></script>
+    <link rel="stylesheet" href="srtest.css">
+    <script src="srtest.js"></script>
+</head>
+
+<body>
+</body>
+<script>
+srtest.init({
+    title: "异步加载测试"
+});
+
+var g1 = srtest.group('异步加载测试');
+var l1 = g1.warn('未确认');
+
+//确保sr.js加载之前
+var sr = {
+    //配置参数
+    config: {
+        baseUrl: "js/"
+    },
+    //初始化完成后
+    ready: function() {
+        require('file/f1')
+            .done(function() {
+                l1.succeed('确认成功');
+            });
+    }
+};
+</script>
+<script src="../src/sr.js" async></script>
+
+</html>
