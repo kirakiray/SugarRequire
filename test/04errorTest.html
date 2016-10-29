@@ -38,7 +38,7 @@ sr.error = function(e) {
 };
 
 //不存在的模块
-require('aa', "file/f1")
+var a = require('aa', "file/f1")
     .done(function(e) {
         console.log(e);
     })

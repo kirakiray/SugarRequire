@@ -317,9 +317,13 @@
     };
 
     //SugarRequire
-    function SugarRequire(args, pubData, p) {
+    function SugarRequire() {
+        this.init.apply(this, arguments);
+    };
+    SugarRequire.fn = SugarRequire.prototype;
+    SugarRequire.fn.init = function(args, pubData, p) {
         //转换成数组
-        args = transToArray(args);
+        // args = transToArray(args);
 
         //添加共享数据对象
         this._pub = pubData || {};
@@ -332,9 +336,8 @@
         }
         this._args = args;
     };
-    SugarRequire.fn = SugarRequire.prototype;
     SugarRequire.fn.require = function() {
-        var srObj = new SugarRequire(arguments, this._pub, this._p);
+        var srObj = new SugarRequire(transToArray(arguments), this._pub, this._p);
         return srObj;
     };
     SugarRequire.fn.pend = function(fun) {
@@ -391,7 +394,7 @@
     };
 
     var require = function() {
-        var srObj = new SugarRequire(arguments);
+        var srObj = new SugarRequire(transToArray(arguments));
         return srObj;
     };
 
@@ -627,7 +630,7 @@
                 var isRequireEnd = false;
 
                 moduleData.exports = tempVal.call({ FILE: url }, function() {
-                    var inRequire, args = arguments;
+                    var inRequire, args = transToArray(arguments);
                     if (isRequireEnd) {
                         inRequire = new SugarRequire(args, {
                             rel: url
@@ -665,7 +668,7 @@
                 data: data
             }, function() {
                 // require
-                return new SugarRequire(arguments, {
+                return new SugarRequire(transToArray(arguments), {
                     rel: url
                 });
             }, callback, function(data) {
@@ -713,6 +716,7 @@
             //配置paths
             extend(paths, data.paths);
         },
+        require: require,
         define: outerDefine,
         defer: outerDefer,
         //直接获取模块
