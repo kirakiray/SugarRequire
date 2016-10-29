@@ -4,6 +4,8 @@ It's SugarRequire 3.0
 
 ## 为什么要使用SugarRequire
 
+如果你受不了AngularJS  ReactJS  TypeScript之类的开发模式，不妨试试这个。
+
 它能降低web前端开发的项目复杂度；
 
 深得前端异步的意义，特别优化的带有模块化功能的框架。

@@ -519,6 +519,7 @@
                                     //代理传送门
                                     R.runDefer(url, e.d, e.res, e.rej);
                                 });
+                                delete tarData.proms;
                                 break;
                             default:
                                 tarData.state = FINISH;
@@ -527,6 +528,7 @@
                                     //返回完成
                                     e.res();
                                 });
+                                delete tarData.proms;
                                 break;
                         }
 
