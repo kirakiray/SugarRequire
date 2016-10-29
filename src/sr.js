@@ -553,6 +553,7 @@
                         tarData.state = ERROR;
                         each(proms, function(e) {
                             e.rej({
+                                type: ERROR,
                                 state: ERROR,
                                 url: url
                             });
@@ -584,6 +585,9 @@
                             rej: reject,
                             d: this.data
                         });
+                        break;
+                    case ERROR:
+                        reject();
                         break;
                 }
             };
