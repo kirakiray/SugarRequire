@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>sr-debug test</title>
+    <script src="jquery-1.9.1.min.js"></script>
+    <script src="../src/sr.js"></script>
+    <script src="../plugin/sr-debug.js"></script>
+</head>
+
+<body>
+</body>
+<script>
+sr.config({
+    baseUrl: "js/"
+});
+
+var aaa = function() {
+    require('ddd');
+    require('file/f1')
+        .done(function() {
+            console.log('成功');
+        })
+        .require('aa')
+        .fail(function() {
+            console.log('报错');
+        });
+};
+aaa();
+</script>
+
+</html>
