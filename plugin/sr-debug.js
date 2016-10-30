@@ -1,4 +1,6 @@
+//sr框架用调试增强打印辅助插件
 sr.extend(function(baseResources, R, SugarRequire) {
+    //暴露关键数据到全局
     window.baseResources = baseResources;
     window.R = R;
     window.SugarRequire = SugarRequire;
@@ -16,7 +18,7 @@ sr.extend(function(baseResources, R, SugarRequire) {
             a();
         } catch (e) {
             //分组
-            var errArr = e.stack.match(/[a-zA-Z]+?:\/\/.+\d/g);
+            var errArr = (e.stack && e.stack.match(/[a-zA-Z]+?:\/\/.+\d/g)) || [];
             //错误后输出结果
             this.fail(function() {
                 //辅助打印错误引入的定位
