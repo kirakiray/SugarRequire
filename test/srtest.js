@@ -53,7 +53,7 @@
         //设置输入点
         var calllines = _cline || getCallLine();
         // console.log(calllines);
-        srline._callline = calllines[4];
+        srline._callline = calllines && calllines[4];
 
         this.changeTotal(++this.totalCount);
         var _this = this;
@@ -140,7 +140,9 @@
         var orderMap = this._orderMap || (this._orderMap = {});
         var _this = this;
 
-        var callline = getCallLine()[3];
+        //ie9以下兼容操作
+        var beforeCallline = getCallLine();
+        var callline = beforeCallline && beforeCallline[3];
 
         //当前开始的id
         this._orderId = 0;
@@ -189,7 +191,7 @@
 
         var calllines = getCallLine();
         // console.log(calllines);
-        orderObj.logObj._callline = calllines[3];
+        orderObj.logObj._callline = calllines && calllines[3];
 
         //顺序计算
         if (orderObj.id > this._orderId) {
@@ -295,7 +297,9 @@
         //获取注册点
         var callline = this._callline;
         if (!callline) {
-            callline = getCallLine()[4];
+            //ie断定操作
+            var aftercallline = getCallLine();
+            callline = aftercallline && aftercallline[4];
         }
         textObj.push({
             type: "console",
