@@ -447,9 +447,6 @@
             if (paths[pathStr]) {
                 pathStr = paths[pathStr];
             }
-            // if (dataMap[pathStr]) {
-            //     return pathStr;
-            // }
 
             //判断是否带协议头部
             //没有协议
