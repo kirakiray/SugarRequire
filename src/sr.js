@@ -243,19 +243,28 @@
             };
 
             each(args, function(e, i) {
+                var isCall = false;
                 e.call(_this, function(succeedData) {
                     //resolve
+                    if (isCall) {
+                        return;
+                    }
                     //设置数据
                     argsData[i] = succeedData;
+                    isCall = true;
                     callPending(succeedData, FULFILLED, i);
                 }, function(errorData) {
                     //reject
+                    if (isCall) {
+                        return;
+                    }
                     _this.state = REJECTED;
                     errData = errData || [];
                     errData.push({
                         no: i,
                         data: errorData
                     });
+                    isCall = true;
                     callPending(errorData, REJECTED, i);
                 });
             });
