@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="srtest.css">
     <script src="srtest.js"></script>
     <script src="../src/sr.js"></script>
-    <script src="../plugin/sr-debug.js"></script>
     <script src="../plugin/sr-IEluser.js"></script>
 </head>
 
@@ -34,7 +33,7 @@ sr.config({
 });
 
 sr.error = function(e) {
-    console.log(e);
+    console.log('srerror => ', e);
     g1.order('err1');
 };
 
@@ -43,15 +42,18 @@ var a = require('aa', "file/f1")
     .done(function(e) {
         console.log(e);
     })
-    .pend(function(e) {
-        if (e.url == "js/aa.js") {
-            g1.order('err2');
-        }
-        console.log(e);
-    })
     .fail(function(e) {
         console.log(e);
         g1.order('err3');
+    });
+
+//defer模块拒绝测试
+require('def/rejectDefer')
+    .done(function(e) {
+        console.log('成功');
+    })
+    .fail(function(e) {
+        console.log(e);
     });
 </script>
 

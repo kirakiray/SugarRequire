@@ -18,7 +18,7 @@ SugarRequire 3.0 框架不能使用 2.0 和 1.0 版本的插件；
 
 ## 目录结构
 
-doc——SugarRequire的使用文档（后面完善，反正现在也没人敢用，我自己先用着）；
+doc——SugarRequire的使用文档；
 
 plugin——SugarRequire官方提供的简易插件；
 
