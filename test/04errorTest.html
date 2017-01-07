@@ -44,16 +44,17 @@ var a = require('aa', "file/f1")
     })
     .fail(function(e) {
         console.log(e);
-        g1.order('err3');
+        g1.order('err2');
     });
 
 //defer模块拒绝测试
-require('def/rejectDefer')
+require('der/rejectDefer')
     .done(function(e) {
         console.log('成功');
     })
     .fail(function(e) {
         console.log(e);
+        g1.order('err3');
     });
 </script>
 

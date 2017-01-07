@@ -223,7 +223,7 @@
                 });
 
                 //判断是否error类型，触发sr.error
-                if (data.state == ERROR) {
+                if (data && (data.state == ERROR)) {
                     sr.error(extend({
                         args: _this._args
                     }, data));
@@ -374,12 +374,6 @@
                     val: _this._args[e.no]
                 }, e);
             }
-            //判断是否error类型，触发sr.error
-            // if (redata.state == ERROR) {
-            //     sr.error(extend({
-            //         args: _this._args
-            //     }, redata));
-            // }
             fun.call(_this, redata);
         });
         return _this;
