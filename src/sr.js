@@ -580,7 +580,7 @@
                         tarData.state = ERROR;
                         each(proms, function(e) {
                             e.rej({
-                                type: ERROR,
+//                                type: ERROR,
                                 state: ERROR,
                                 url: url
                             });
