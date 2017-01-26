@@ -26,7 +26,7 @@ sr.extend(function(baseResources, R, Require, GatherEvent) {
                 return;
             } else if (this.readyState == 'loading') {
                 errcall();
-                return;
+                // return;
             }
             //遍历scriptArr
             if (scriptArr.length) {

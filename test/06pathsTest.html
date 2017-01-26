@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>路径测试</title>
+    <link rel="stylesheet" href="srtest.css">
+    <script src="../src/sr.js"></script>
+    <script src="../plugin/sr-debug.js"></script>
+</head>
+
+<body>
+</body>
+<script>
+sr.config({
+    baseUrl: "js/",
+    paths: {
+        //注册资源
+        dertest: "der/defer2",
+        jq: "http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js",
+        //注册路径
+        "haha/": "def/",
+        "jqcon/": "http://apps.bdimg.com/libs/jquery/"
+    }
+});
+// require('dertest').post("kkkkkkkkkkk").done(function(data) {
+//     console.log(data);
+// });
+require('jq').require('../srtest').done(function() {
+    srtest.init({
+        title: "路径测试"
+    });
+
+    var g1 = srtest.group('路径测试测试');
+    g1.succeed('初始化成功');
+    var l1 = g1.warn('二次载入网络资源测试');
+
+    //再次载入相应资源
+    require('jqcon/2.1.4/jquery.min.js').done(function() {
+        l1.succeed('二次载入网络资源成功');
+    });
+});
+</script>
+
+</html>

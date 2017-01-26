@@ -22,7 +22,7 @@ sr.extend(function(baseResources, R, SugarRequire) {
             //错误后输出结果
             this.fail(function() {
                 //辅助打印错误引入的定位
-                console.error("fail positioning => ", errArr[3]);
+                errArr && errArr[3] && console.error("fail positioning => ", errArr[3]);
             });
         }
     };

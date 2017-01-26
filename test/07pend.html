@@ -7,19 +7,39 @@
     <title>test</title>
     <script src="../src/sr.js"></script>
     <script src="../plugin/sr-debug.js"></script>
+    <link rel="stylesheet" href="srtest.css">
+    <script src="jquery-1.9.1.min.js"></script>
+    <script src="srtest.js"></script>
 </head>
 
 <body>
 </body>
 <script>
+    srtest.init({
+        title: "pend test"
+    });
+
+    var g1 = srtest.group('pend测试');
+    var l1 = g1.warn('pend count 等待确认');
+    var l2 = g1.warn('pend arguments count 等待确认');
+
     sr.config({
         baseUrl: "js/"
     });
+    var count = 0;
     require('def/d1', 'def/d2', 'def/d3', 'def/d4')
         .pend(function(d) {
             console.log(d);
+            count++;
         })
         .done(function(d1, d2, d3, d4) {
+            if (count == 4) {
+                l1.succeed('pend count ok!');
+            }
+        
+            if(arguments.length == 4){
+                l2.succeed('pend arguments count ok!');
+            }
             console.log(arguments)
         });
 </script>

@@ -4,11 +4,17 @@ It's SugarRequire 3.0
 
 ## 为什么要使用SugarRequire
 
-如果你受不了AngularJS  ReactJS  TypeScript之类的开发模式，不妨试试这个。
+SugarRequire能够极大地提升javascript的数据可复用性和更好的发挥异步特性，降低web前端开发的项目复杂度；
 
-它能降低web前端开发的项目复杂度；
+比requirejs和seajs强大很多，SugarRequire的打包混淆文件（`.min`）的js文件都比他们小；
 
-深得前端异步的意义，特别优化的带有模块化功能的框架。
+精炼，bug少，组合变化多端（3.0版本的`.min`混淆压缩文件才6kb左右）；
+
+可搭配其他的框架（如jquery，vuejs之类），因为SugarRequire只负责资源管理，所以能很好的搭配第三方视图框架或者database库。
+
+## 文档
+
+[中文文档](./doc/cn/readme.md);
 
 ## 注意事项：
 
@@ -16,7 +22,7 @@ SugarRequire 3.0 框架不能使用 2.0 和 1.0 版本的插件；
 
 ## 目录结构
 
-doc——SugarRequire的使用文档（后面完善，反正现在也没人敢用，我自己先用着）；
+doc——SugarRequire的使用文档；
 
 plugin——SugarRequire官方提供的简易插件；
 

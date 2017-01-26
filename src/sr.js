@@ -221,6 +221,13 @@
                     //序号
                     no: index
                 });
+
+                //判断是否error类型，触发sr.error
+                if (data && (data.state == ERROR)) {
+                    sr.error(extend({
+                        args: _this._args
+                    }, data));
+                }
                 argLen--;
                 if (!argLen) {
                     //如果是错误状态的话
@@ -243,19 +250,28 @@
             };
 
             each(args, function(e, i) {
+                var isCall = false;
                 e.call(_this, function(succeedData) {
                     //resolve
+                    if (isCall) {
+                        return;
+                    }
                     //设置数据
                     argsData[i] = succeedData;
+                    isCall = true;
                     callPending(succeedData, FULFILLED, i);
                 }, function(errorData) {
                     //reject
+                    if (isCall) {
+                        return;
+                    }
                     _this.state = REJECTED;
                     errData = errData || [];
                     errData.push({
                         no: i,
                         data: errorData
                     });
+                    isCall = true;
                     callPending(errorData, REJECTED, i);
                 });
             });
@@ -358,12 +374,6 @@
                     val: _this._args[e.no]
                 }, e);
             }
-            //判断是否error类型，触发sr.error
-            if (redata.state == ERROR) {
-                sr.error(extend({
-                    args: _this._args
-                }, redata));
-            }
             fun.call(_this, redata);
         });
         return _this;
@@ -418,12 +428,15 @@
 
     //main
     var windowHead = document.head;
-    //主体快捷目录映射
+    //映射资源
     var paths = {};
+    //映射目录
+    var dirpaths = {};
     //载入模块用的map对象
     var dataMap = {};
     var baseResources = {
         paths: paths,
+        dirpaths: dirpaths,
         //js模块相对路径
         baseUrl: "",
         dataMap: dataMap,
@@ -446,10 +459,19 @@
             //判断是否已经注册了路径
             if (paths[pathStr]) {
                 pathStr = paths[pathStr];
+            } else {
+                var tarreg, res;
+                //判断是否注册目录
+                for (var i in dirpaths) {
+                    tarreg = new RegExp('^' + i);
+                    res = tarreg.test(pathStr);
+                    if (res) {
+                        pathStr = pathStr.replace(tarreg, dirpaths[i]);
+                        break
+                    }
+                }
+                // console.log(res);
             }
-            // if (dataMap[pathStr]) {
-            //     return pathStr;
-            // }
 
             //判断是否带协议头部
             //没有协议
@@ -558,7 +580,7 @@
                         tarData.state = ERROR;
                         each(proms, function(e) {
                             e.rej({
-                                type: ERROR,
+//                                type: ERROR,
                                 state: ERROR,
                                 url: url
                             });
@@ -627,7 +649,7 @@
             if (getType(tempVal) == "function") {
                 var exports = {};
                 var moduleData = {
-                    // exports: exports
+                    exports: exports
                 };
 
                 innerRequire = require();
@@ -638,7 +660,7 @@
                 //是否requre完结
                 var isRequireEnd = false;
 
-                moduleData.exports = tempVal.call({ FILE: url }, function() {
+                var revalue = tempVal.call({ FILE: url }, function() {
                     var inRequire, args = transToArray(arguments);
                     if (isRequireEnd) {
                         inRequire = new SugarRequire(args, {
@@ -649,7 +671,9 @@
                     }
 
                     return inRequire;
-                }, exports, moduleData) || exports;
+                }, exports, moduleData);
+
+                revalue && (moduleData.exports = revalue);
 
                 isRequireEnd = true;
 
@@ -723,7 +747,16 @@
             //配置baseurl
             baseResources.baseUrl = data.baseUrl || "";
             //配置paths
-            extend(paths, data.paths);
+            // extend(paths, data.paths);
+            // dirpaths
+            for (var i in data.paths) {
+                if (/\/$/.test(i)) {
+                    //属于目录类型
+                    dirpaths[i] = data.paths[i];
+                } else {
+                    paths[i] = data.paths[i];
+                }
+            }
         },
         require: require,
         define: outerDefine,
