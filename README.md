@@ -4,7 +4,9 @@ It's SugarRequire 3.0
 
 ## 为什么要使用SugarRequire
 
-SugarRequire能够极大地提升javascript的数据可复用性和更好的发挥异步特性，降低web前端开发的项目复杂度；
+你遇到过开发异常大的web项目而导致加载缓慢而导致体验差的问题吗；
+
+SugarRequire能够极大地提升javascript的数据可复用性和更好的发挥异步特性，降低web前端开发的项目复杂度，优化用户体验；
 
 比requirejs和seajs强大很多，SugarRequire的打包混淆文件（`.min`）的js文件都比他们小；
 
