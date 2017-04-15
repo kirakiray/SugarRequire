@@ -338,7 +338,9 @@
 
     //SugarRequire
     function SugarRequire() {
-        this.init.apply(this, arguments);
+        var redata = this.init.apply(this, arguments);
+        if (redata) return redata;
+
     };
     SugarRequire.fn = SugarRequire.prototype;
     SugarRequire.fn.init = function(args, pubData, p) {
@@ -580,7 +582,7 @@
                         tarData.state = ERROR;
                         each(proms, function(e) {
                             e.rej({
-//                                type: ERROR,
+                                // type: ERROR,
                                 state: ERROR,
                                 url: url
                             });
