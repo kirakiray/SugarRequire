@@ -14,6 +14,8 @@ SugarRequire能够极大地提升javascript的数据可复用性和更好的发�
 
 可搭配其他的框架（如jquery，vuejs之类），因为SugarRequire只负责资源管理，所以能很好的搭配第三方视图框架或者database库。
 
+适合需要异步加载模块的场合，如果最后的输出是一个包的做法，建议使用AMD、CMD或es6模块。
+
 ## 文档
 
 [中文文档](./doc/cn/readme.md);
