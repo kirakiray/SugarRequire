@@ -1,16 +1,12 @@
 (function(glo) {
     "use strict";
     //common
-    //没开始载入
-    var WAIT = 'wait';
     //执行中
     var PENDING = 'pending';
     //执行完成
     var FULFILLED = 'fulfilled';
     //执行失败
     var REJECTED = 'rejected';
-    //后代链触发
-    var WOOD = "wood";
     //后代链全部触发完成
     var FIRE = 'fire';
 
@@ -102,9 +98,9 @@
             this._get(eventName).o.push(fun);
         },
         //定义优先执行函数
-        first: function(eventName, fun) {
-            this._get(eventName).f = fun;
-        },
+        // first: function(eventName, fun) {
+        //     this._get(eventName).f = fun;
+        // },
         //定义最后执行函数
         last: function(eventName, fun) {
             this._get(eventName).l = fun;
@@ -117,12 +113,12 @@
         emit: function(eventName, data) {
             var eveObj = this._get(eventName);
             //触发first
-            var firstFun = eveObj.f;
-            firstFun && firstFun({
-                name: eventName,
-                type: 'first'
-            }, data);
-            delete eveObj.f;
+            // var firstFun = eveObj.f;
+            // firstFun && firstFun({
+            //     name: eventName,
+            //     type: 'first'
+            // }, data);
+            // delete eveObj.f;
             //触发事件队列
             var oneArr = eveObj.o;
             while (oneArr.length) {
@@ -147,147 +143,156 @@
         }
     };
 
-    function SugarPromise(args) {
+    function SugarPromise() {
         var _this = this;
-        var eve = _this._e = new SimpleEvent();
-        _this.state = WAIT;
-        _this.args = args;
-        //下一组记录数据
-        var _next = _this._next = [];
-        //当前组完成后
-        eve.last(FULFILLED, function() {
-            var fireFun = function() {
-                eve.emit(FIRE);
-                delete _this.data;
-                //判断是否有父级，有则执行引燃WOOD
-                if (_this._par) {
-                    _this._par._e.emit(WOOD);
-                }
-                fireFun = null;
-            };
 
-            //判断当前是否有后代
-            if (!_next.length) {
-                //没有后代的话，点火引发FIRE。
-                fireFun();
-            } else {
-                //有后代则后代执行初始化
-                each(_next, function(e) {
-                    nextTick(function() {
-                        e._init();
-                    });
-                });
+        //事件寄托对象
+        _this._e = new SimpleEvent();
 
-                //给有后代的收集
-                var woodCount = 0;
-                eve.on(WOOD, function(e) {
-                    woodCount++;
-                    if (_next.length == woodCount) {
-                        fireFun();
-                        eve.off(WOOD);
-                    }
-                });
-            }
-        });
+        //函数寄宿对象
+        _this._funs = [];
+
+        //总函数数量寄宿属性
+        _this._fCou = 0;
+
+        //id递增器
+        _this._id = 0;
+
+        //成功数据寄宿对象
+        _this.datas = [];
+
+        //错误后数据寄宿对象
+        _this.errs = [];
+
+        //是否已经开始跑
+        _this._r = 0;
+
+        //后代寄宿对象
+        _this._next = [];
+
+        //后代数量寄宿属性
+        _this._nCou = 0;
+
+        //hold 是否挂起不执行后代链
+        _this._h = 0;
     };
     SugarPromise.prototype = {
-        //初始化方法
-        _init: function() {
-            var _this = this,
-                eve = _this._e,
-                args = _this.args;
-            _this.state = PENDING;
-            var argLen = args.length;
-            //数据正确的反馈数组
-            var argsData = [];
-            //数据错误的反馈数组
-            var errData;
-            if (!argLen) {
-                _this.state = FULFILLED;
-                eve.emit(FULFILLED, {
-                    datas: argsData,
-                    state: FULFILLED
-                });
-                return;
-            }
+        //开始执行的函数
+        _run: function() {
+            var _this = this;
+            _this._r = 1;
 
-            //pending的方法
-            var callPending = function(data, state, index) {
-                eve.emit(PENDING, {
-                    //数据
-                    data: data,
-                    //状态
-                    state: state,
-                    //序号
-                    no: index
-                });
-
-                //判断是否error类型，触发sr.error
-                if (data && (data.state == ERROR)) {
-                    sr.error(extend({
-                        args: _this._args
-                    }, data));
-                }
-                argLen--;
-                if (!argLen) {
-                    //如果是错误状态的话
-                    if (errData) {
-                        eve.emit(REJECTED, errData);
-                    } else {
-                        //全部数据加载成功
-                        _this.state = FULFILLED;
-                        eve.emit(FULFILLED, {
-                            datas: argsData,
-                            state: FULFILLED
+            //当完成后执行后代
+            _this._e.last(FULFILLED, function() {
+                if (_this._next.length) {
+                    if (!_this._h) {
+                        each(_this._next, function(n) {
+                            n._run();
                         });
                     }
-                    //垃圾回收
-                    callPending = errData = argsData = null;
-                    eve.off(PENDING);
-                    eve.off(REJECTED);
-                    eve.off(FULFILLED);
+                } else {
+                    //判断是否有后代，没有后代则直接出发fire事件
+                    _this._e.emit(FIRE);
                 }
+            });
+
+            if (0 in _this._funs) {
+                //开始执行内部函数
+                each(_this._funs, function(e) {
+                    e();
+                });
+            } else {
+                //直接触发运行成功
+                _this._e.emit(FULFILLED);
+            }
+
+            //回收
+            _this._run = _this._funs = null;
+        },
+        //callPending
+        _cp: function(data, state, index) {
+            var _this = this;
+            var eve = _this._e;
+            eve.emit(PENDING, {
+                //数据
+                data: data,
+                //状态
+                state: state,
+                //序号
+                no: index
+            });
+
+            //等待call的函数数量为0
+            if (!--_this._fCou) {
+                //判断执行成功或失败
+                if (0 in _this.errs) {
+                    eve.emit(REJECTED);
+                } else {
+                    eve.emit(FULFILLED);
+                }
+
+                //回收
+                eve.off(PENDING);
+                eve.off(REJECTED);
+                eve.off(FULFILLED);
+                _this.errs = _this.datas = null;
+            }
+        },
+        add: function(fun) {
+            var _this = this;
+
+            //添加数据
+            _this._fCou++;
+            var index = _this._id++;
+
+            //resolve或reject其中只能运行一个
+            var iscall = 0;
+            var runfun = function() {
+                fun.call(_this, function(data) {
+                    //resolve
+                    if (iscall) return;
+                    iscall = 1;
+
+                    //载入数据
+                    _this.datas[index] = data;
+
+                    //执行callPending
+                    _this._cp(data, FULFILLED, index);
+                }, function(data) {
+                    //reject
+                    if (iscall) return;
+                    iscall = 1;
+
+                    _this.errs.push({
+                        no: index,
+                        data: data
+                    });
+
+                    //执行callPending
+                    _this._cp(data, REJECTED, index);
+                });
             };
 
-            each(args, function(e, i) {
-                var isCall = false;
-                e.call(_this, function(succeedData) {
-                    //resolve
-                    if (isCall) {
-                        return;
-                    }
-                    //设置数据
-                    argsData[i] = succeedData;
-                    isCall = true;
-                    callPending(succeedData, FULFILLED, i);
-                }, function(errorData) {
-                    //reject
-                    if (isCall) {
-                        return;
-                    }
-                    _this.state = REJECTED;
-                    errData = errData || [];
-                    errData.push({
-                        no: i,
-                        data: errorData
-                    });
-                    isCall = true;
-                    callPending(errorData, REJECTED, i);
-                });
-            });
+            //确认开始了的话就直接开跑
+            if (_this._r) {
+                runfun();
+            } else {
+                _this._funs.push(runfun);
+            }
         },
         //完成时触发
         then: function(fun) {
             var _this = this;
-            _this._e.one(FULFILLED, function(e, data) {
+            _this._e.one(FULFILLED, function(e) {
                 //把数据带过去
-                fun.apply(_this, data.datas);
+                fun.apply(_this, _this.datas);
             });
             return _this;
         },
         //拒绝时触发
         "catch": function(fun) {
-            this._e.one(REJECTED, function(e, data) {
+            var data = this.errs;
+            this._e.one(REJECTED, function(e) {
                 fun(data);
             });
             return this;
@@ -301,12 +306,27 @@
         },
         //后续链
         prom: function() {
-            var args = transToArray(arguments);
-            var sp = new SugarPromise(args);
-            //设置parent
-            sp._par = this;
-            //设置下一批
-            this._next.push(sp);
+            var sp = new SugarPromise();
+            each(transToArray(arguments), function(e) {
+                sp.add(e);
+            });
+
+            var _this = this;
+
+            //增加后代计数
+            _this._nCou++;
+
+            //加入后代
+            _this._next.push(sp);
+
+            //收集后代的fire
+            sp._e.last(FIRE, function() {
+                if (!--_this._nCou) {
+                    _this._e.emit(FIRE);
+                    _this._e = _this._next = null;
+                }
+            });
+
             return sp;
         },
         //传递数据
@@ -324,17 +344,37 @@
         fire: function(fun) {
             this._e.one(FIRE, fun);
             return this;
+        },
+        //挂起方法
+        lock: function() {
+            this._h = 1;
+        },
+        unlock: function() {
+            var _this = this;
+            //确认是上锁状态
+            if (_this._h) {
+                _this._h = 0;
+                if (!_this.datas) {
+                    _this._next && each(_this._next, function(n) {
+                        n._run();
+                    });
+                }
+            }
         }
     };
     //main
     var prom = function() {
-        var args = transToArray(arguments);
-        var sp = new SugarPromise(args);
+        var sp = new SugarPromise();
+        each(transToArray(arguments), function(e) {
+            sp.add(e);
+        });
         nextTick(function() {
-            sp._init();
+            sp._run();
         });
         return sp;
     };
+
+    var Promise = glo.Promise;
 
     //SugarRequire
     function SugarRequire() {
@@ -344,8 +384,7 @@
     };
     SugarRequire.fn = SugarRequire.prototype;
     SugarRequire.fn.init = function(args, pubData, p) {
-        //转换成数组
-        // args = transToArray(args);
+        this._args = args;
 
         //添加共享数据对象
         this._pub = pubData || {};
@@ -356,7 +395,6 @@
         } else {
             this._p = prom.apply(glo, promRunArr);
         }
-        this._args = args;
     };
     SugarRequire.fn.require = function() {
         var srObj = new SugarRequire(transToArray(arguments), this._pub, this._p);
@@ -397,7 +435,20 @@
     SugarRequire.fn.done = function(fun) {
         var _this = this;
         _this._p.then(function() {
-            fun.apply(_this, arguments);
+            var p = fun.apply(_this, arguments);
+            if (p && Promise && p instanceof Promise) {
+                var promiseArr = _this._pa;
+                if (!promiseArr) {
+                    _this._p.lock();
+                    promiseArr = _this._pa = [];
+                    nextTick(function() {
+                        Promise.all.call(Promise, promiseArr).then(function() {
+                            _this._p.unlock();
+                        });
+                    });
+                }
+                promiseArr.push(p);
+            }
         });
         return _this;
     };
@@ -587,6 +638,8 @@
                                 url: url
                             });
                         });
+                        //触发全局error
+                        sr.error(url, sugarRequire);
                         //清空信息
                         baseResources.tempM = {};
                     });
@@ -798,7 +851,7 @@
         //加载报错响应
         error: emptyFun,
         //版本号
-        version: "3"
+        version: "3.1"
     };
 
     //异步初始化断定
