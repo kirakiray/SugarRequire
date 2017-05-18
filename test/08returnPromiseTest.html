@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>return Promise Test</title>
+    <title>returnPromise and hand Test</title>
     <script src="../src/sr.js"></script>
     <script src="../plugin/sr-debug.js"></script>
     <link rel="stylesheet" href="srtest.css">
@@ -18,7 +18,7 @@
     //系统没有Promise就不用测试了
     if (window.Promise) {
         srtest.init({
-            title: "return Promise Test"
+            title: "returnPromise and hand Test"
         });
 
         var g1 = srtest.group('返回Promise测试');
@@ -79,6 +79,22 @@
                 l6.succeed('后代2完成');
                 console.log('bbb第二次完成所有 => ', arguments);
             });
+
+
+        var g3 = srtest.group('hand测试');
+        var g3_l1 = g3.warn('数据1？');
+        var g3_l2 = g3.warn('数据2？');
+
+        require('def/d1').hand().require('der/defer2').done(function(d) {
+            if (d.data == 'I am D1') {
+                g3_l1.succeed('是数据1 ok');
+            }
+        });
+        require('def/d1', 'def/d2').hand().require('der/defer2').done(function(d) {
+            if (d.data.length == 2) {
+                g3_l2.succeed('是数据2 ok');
+            }
+        });
     }
 </script>
 

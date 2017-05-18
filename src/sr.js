@@ -375,6 +375,7 @@
     };
 
     var Promise = glo.Promise;
+    var STR_UNDEFINED = undefined;
 
     //SugarRequire
     function SugarRequire() {
@@ -382,83 +383,99 @@
         if (redata) return redata;
 
     };
-    SugarRequire.fn = SugarRequire.prototype;
-    SugarRequire.fn.init = function(args, pubData, p) {
-        this._args = args;
+    SugarRequire.prototype = {
+        init: function(args, pubData, p) {
+            this._args = args;
 
-        //添加共享数据对象
-        this._pub = pubData || {};
+            //添加共享数据对象
+            this._pub = pubData || {};
 
-        var promRunArr = R.toProm(args, this);
-        if (p) {
-            this._p = p.prom.apply(p, promRunArr);
-        } else {
-            this._p = prom.apply(glo, promRunArr);
-        }
-    };
-    SugarRequire.fn.require = function() {
-        var srObj = new SugarRequire(transToArray(arguments), this._pub, this._p);
-        return srObj;
-    };
-    SugarRequire.fn.pend = function(fun) {
-        var _this = this;
-        _this._p.pend(function(e) {
-            var redata;
-            if (e.state != FULFILLED) {
-                redata = extend({
-                    val: _this._args[e.no],
-                    no: e.no
-                }, e.data);
+            var promRunArr = R.toProm(args, this);
+            if (p) {
+                this._p = p.prom.apply(p, promRunArr);
             } else {
-                redata = extend({
-                    val: _this._args[e.no]
-                }, e);
+                this._p = prom.apply(glo, promRunArr);
             }
-            fun.call(_this, redata);
-        });
-        return _this;
-    };
-    SugarRequire.fn.fail = function(fun) {
-        var _this = this;
-        //兼容低坂本IE操作
-        _this._p["catch"](function(e) {
-            var reDataArr = [];
-            each(e, function(e2) {
-                reDataArr.push(extend({
-                    no: e2.no
-                }, e2.data));
-            });
-            fun(reDataArr);
-        });
-        return _this;
-    };
-    SugarRequire.fn.done = function(fun) {
-        var _this = this;
-        _this._p.then(function() {
-            var p = fun.apply(_this, arguments);
-            if (p && Promise && p instanceof Promise) {
-                var promiseArr = _this._pa;
-                if (!promiseArr) {
-                    _this._p.lock();
-                    promiseArr = _this._pa = [];
-                    nextTick(function() {
-                        Promise.all.call(Promise, promiseArr).then(function() {
-                            _this._p.unlock();
-                        });
-                    });
+        },
+        require: function() {
+            var srObj = new SugarRequire(transToArray(arguments), this._pub, this._p);
+            return srObj;
+        },
+        pend: function(fun) {
+            var _this = this;
+            _this._p.pend(function(e) {
+                var redata;
+                if (e.state != FULFILLED) {
+                    redata = extend({
+                        val: _this._args[e.no],
+                        no: e.no
+                    }, e.data);
+                } else {
+                    redata = extend({
+                        val: _this._args[e.no]
+                    }, e);
                 }
-                promiseArr.push(p);
+                fun.call(_this, redata);
+            });
+            return _this;
+        },
+        fail: function(fun) {
+            var _this = this;
+            //兼容低坂本IE操作
+            _this._p["catch"](function(e) {
+                var reDataArr = [];
+                each(e, function(e2) {
+                    reDataArr.push(extend({
+                        no: e2.no
+                    }, e2.data));
+                });
+                fun(reDataArr);
+            });
+            return _this;
+        },
+        done: function(fun) {
+            var _this = this;
+            _this._p.then(function() {
+                var p = fun.apply(_this, arguments);
+                if (p && Promise && p instanceof Promise) {
+                    var promiseArr = _this._pa;
+                    if (!promiseArr) {
+                        _this._p.lock();
+                        promiseArr = _this._pa = [];
+                        nextTick(function() {
+                            Promise.all.call(Promise, promiseArr).then(function() {
+                                _this._p.unlock();
+                                delete _this._pa;
+                            });
+                        });
+                    }
+                    promiseArr.push(p);
+                }
+            });
+            return _this;
+        },
+        post: function(data) {
+            this._p.send(data);
+            return this;
+        },
+        hand: function(data) {
+            var _this = this;
+            if (data != STR_UNDEFINED) {
+                _this._p.gift(data);
+            } else {
+                _this.done(function(data) {
+                    var args = transToArray(arguments);
+                    if (args[1] != STR_UNDEFINED) {
+                        //有多个数据就传数组
+                        _this.hand(args);
+                    } else if (data != STR_UNDEFINED) {
+                        //只有一个数据就传一个
+                        _this.hand(data);
+                    }
+                });
             }
-        });
-        return _this;
-    };
-    SugarRequire.fn.post = function(data) {
-        this._p.send(data);
-        return this;
-    };
-    SugarRequire.fn.hand = function(data) {
-        this._p.gift(data);
-        return this;
+            return this;
+        }
     };
 
     var require = function() {
