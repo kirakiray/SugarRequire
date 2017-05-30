@@ -6,6 +6,8 @@ It's SugarRequire 3.0
 
 你遇到过开发异常大的web项目而导致加载缓慢而导致体验差的问题吗；
 
+在某个数量级下，使用webpack之类的打包方案不会有问题；但当业务耦合和代码量达到一定程度，过大的文件体积会导致会导致卡顿，严重印象体验，所以需要异步模块方案；而requireJS的AMD规范在很多场景下并不是那么完美；
+
 SugarRequire能够极大地提升javascript的数据可复用性和更好的发挥异步特性，降低web前端开发的项目复杂度，优化用户体验；
 
 比requirejs和seajs强大很多，SugarRequire的打包混淆文件（`.min`）的js文件都比他们小；
