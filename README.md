@@ -18,6 +18,6 @@ AMD规范是添加依赖前置，达到按需加载的需求，并不能做到�
 
 而SugarRequire的模块化就解决了上面的问题；
 
-得益于浏览器对es7 `async await` 的支持，`Promise` 变成了一个很方便的东西，所以 SugarRequire4 会重依赖 `Promise` 来开发，抛弃以往SugarPromise的底层框架，所以旧浏览器是无法使用 SugarRequire4，它也仅支持在拥有 `Promise` 的坏境里运行，能使用 `async await`的环境才会用得方便；
+得益于浏览器对es7 `async await` 的支持，`Promise` 变成了一个很方便的东西，所以 SugarRequire4 会重依赖 `Promise` 来开发，抛弃以往SugarPromise的底层框架，所以旧浏览器是无法使用 SugarRequire4，它也仅支持ES6+坏境里运行，ES7环境下（能使用 `async await`）才会用得方便；
 
 SugarRequire4 是开发给未来的浏览器使用的，并不适合现有的场景（笔者现在写下这句话，时间是2017-06-21，所有的浏览器才刚刚开始支持 `async await`）；
