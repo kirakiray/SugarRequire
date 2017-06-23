@@ -117,6 +117,17 @@
         };
     })();
 
+    //是否空对象
+    var isEmptyObj = (obj) => {
+        for (let i in obj) {
+            return 0;
+        }
+        return 1;
+    }
+
+    //是否undefined
+    var isUndefined = val => val === undefined;
+
     //返回Promise实例
     var promise = func => new Promise(func);
 
@@ -244,43 +255,81 @@
             //获取模块数据
             let { tempM } = baseResources;
             let data = tempM.d;
+            let { ids } = tempM;
+
+            //查看是否有设定ids
+            (ids && getType(ids) == "string") && (ids = [ids]);
 
             let tar = dataMap[path];
 
             //默认模块为普通文件类型
             let type = tar.type = (tempM.type || "file");
 
+            //运行成功
+            let runFunc = (d) => {
+                //响应队列resolve函数
+                while (0 in tar.res) {
+                    tar.res.shift()(d);
+                }
+                //设置完成
+                tar.state = RESOLVED;
+                //清除无用数据
+                delete tar.res;
+                delete tar.rej;
+            }
+
             //根据类型做不同的处理
             switch (type) {
                 case "file":
-                    // 获取目标函数并运行
-                    while (0 in tar.res) {
-                        tar.res.shift()();
-                    }
-                    tar.state = RESOLVED;
-                    delete tar.res;
-                    delete tar.rej;
+                    runFunc();
                     break;
                 case "define":
-                    console.log('type => ', getType(data));
-
                     //判断是否是函数
                     if (getType(data).search('function') > -1) {
+                        let exports = {},
+                            module = {
+                                exports: exports
+                            };
                         //判断返回值是否promise
-                        let p = data();
+                        let p = data(function() {
+                            return R.require(makeArray(arguments), path);
+                        }, exports, module);
                         if (p instanceof Promise) {
                             p.then((d) => {
-                                while (0 in tar.res) {
-                                    tar.res.shift()(d);
+                                if (isUndefined(d) && getType(module.exports) == "object" && !isEmptyObj(module.exports)) {
+                                    d = module.exports;
                                 }
-                                tar.state = RESOLVED;
+                                runFunc(d);
+
+                                //设置返回数据的方法
                                 tar.get = (callback) => {
                                     callback(d);
                                 };
-                                //清除无用数据
-                                delete tar.res;
-                                delete tar.rej;
+
+                                //判断是否有自定义id
+                                if (ids) {
+                                    arrayEach(ids, (e) => {
+                                        dataMap[e] = tar;
+                                    });
+                                }
                             });
+                        } else {
+                            // if (data instanceof Promise) {
+                            //     data.then((d) => {
+                            //         runFunc(d);
+                            //         //设置返回数据的方法
+                            //         tar.get = (callback) => {
+                            //             callback(d);
+                            //         };
+                            //     });
+                            // } else {
+                            //数据类型
+                            runFunc(data);
+                            //设置返回数据的方法
+                            tar.get = (callback) => {
+                                callback(data);
+                            };
+                            // }
                         }
                     }
                     break;
@@ -341,7 +390,13 @@
             };
         },
         //定义进程
-        task: () => {}
+        task: (d, ids) => {
+            baseResources.tempM = {
+                type: "task",
+                d: d,
+                ids: ids
+            };
+        }
     };
 
     //主体require
@@ -368,7 +423,6 @@
                 }
             }
         },
-        require: require,
         remove: url => {
             //获取路径
             let path = R.getPath(url);
@@ -384,14 +438,18 @@
         },
         //扩展函数
         extend: fun => {
-            fun(baseResources, R, SugarRequire);
+            fun(baseResources, R);
         },
+        require: require,
+        define: oDefine
     };
 
 
     //init
     glo.require || (glo.require = require);
-    glo.define = oDefine;
+    glo.define || (glo.define = oDefine);
     glo.sr = sr;
+
+    window.baseResources = baseResources;
 
 })(window);
