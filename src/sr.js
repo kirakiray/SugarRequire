@@ -314,23 +314,19 @@
                                 }
                             });
                         } else {
-                            // if (data instanceof Promise) {
-                            //     data.then((d) => {
-                            //         runFunc(d);
-                            //         //设置返回数据的方法
-                            //         tar.get = (callback) => {
-                            //             callback(d);
-                            //         };
-                            //     });
-                            // } else {
                             //数据类型
-                            runFunc(data);
+                            runFunc(p);
                             //设置返回数据的方法
                             tar.get = (callback) => {
-                                callback(data);
+                                callback(p);
                             };
-                            // }
                         }
+                    } else {
+                        runFunc(data);
+                        //设置返回数据的方法
+                        tar.get = (callback) => {
+                            callback(data);
+                        };
                     }
                     break;
             };
