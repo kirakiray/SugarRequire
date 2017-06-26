@@ -138,6 +138,16 @@
         loadScript: url => {
             let script = document.createElement('script');
 
+            //判断版本号
+            let { k, v } = sr.cacheInfo;
+            if (k && v) {
+                if (url.search(/\?/) > -1) {
+                    url += "&" + k + "=" + v;
+                } else {
+                    url += "?" + k + "=" + v;
+                }
+            }
+
             //填充相应数据
             script.type = 'text/javascript';
             script.async = true;
@@ -151,7 +161,7 @@
             return script;
         },
         //根据数组内的路径进行封装返回Promise对象
-        toProm: (args, relatePath) => {
+        toProm: (args, pubData) => {
             let pendFun;
 
             let pms = promise((res, rej) => {
@@ -173,10 +183,10 @@
 
                 arrayEach(args, (e, i) => {
                     //获取实际路径
-                    let path = R.getPath(e, relatePath);
+                    let path = R.getPath(e, pubData);
 
                     //获取promise模块
-                    let p = R.agent(path);
+                    let p = R.agent(path, pubData);
 
                     p.then((data) => {
                         arr[i] = data;
@@ -197,21 +207,23 @@
             return pms;
         },
         //载入单个资源的代理方法
-        agent: path => promise((res, rej) => {
+        agent: (path, pubData) => promise((res, rej) => {
             let tar = dataMap[path];
             if (tar) {
                 switch (tar.state) {
                     case LOADED:
                     case PENDING:
-                        tar.res.push(res);
-                        tar.rej.push(rej);
+                        tar.c.push({
+                            res,
+                            pubData
+                        });
                         break;
                     case RESOLVED:
                         nextTick(() => {
                             if (tar.get) {
                                 tar.get((data) => {
                                     res(data);
-                                });
+                                }, pubData);
                             } else {
                                 res();
                             }
@@ -228,8 +240,10 @@
                     //模块类型
                     // type: "file",
                     state: PENDING,
-                    res: [res],
-                    rej: [rej]
+                    c: [{
+                        res,
+                        pubData
+                    }]
                 };
 
                 let script = R.loadScript(path);
@@ -240,13 +254,12 @@
                     baseResources.tempM = {};
                 };
                 script.onerror = () => {
-                    while (0 in tar.rej) {
-                        tar.rej.shift()();
+                    while (0 in tar.c) {
+                        tar.c.shift().rej();
                     }
                     baseResources.tempM = {};
                     tar.state = REJECTED;
-                    delete tar.res;
-                    delete tar.rej;
+                    delete tar.c;
                 }
             }
         }),
@@ -265,24 +278,39 @@
             //默认模块为普通文件类型
             let type = tar.type = (tempM.type || "file");
 
+            //判断是否有自定义id
+            if (ids) {
+                arrayEach(ids, (e) => {
+                    dataMap[e] = tar;
+                });
+            }
+
             //运行成功
-            let runFunc = (d) => {
+            let runFunc = d => {
                 //响应队列resolve函数
-                while (0 in tar.res) {
-                    tar.res.shift()(d);
+                while (0 in tar.c) {
+                    tar.c.shift().res(d);
                 }
+
+                //设置返回数据的方法
+                tar.get = (callback) => {
+                    callback(d);
+                };
+
                 //设置完成
                 tar.state = RESOLVED;
+
                 //清除无用数据
-                delete tar.res;
-                delete tar.rej;
+                delete tar.c;
             }
 
             //根据类型做不同的处理
             switch (type) {
+                //普通文件类型
                 case "file":
                     runFunc();
                     break;
+                    //模块类型
                 case "define":
                     //判断是否是函数
                     if (getType(data).search('function') > -1) {
@@ -290,49 +318,70 @@
                             module = {
                                 exports: exports
                             };
+
                         //判断返回值是否promise
-                        let p = data(function() {
-                            return R.require(makeArray(arguments), path);
+                        let p = data.bind({
+                            FILE: path
+                        })(function() {
+                            return R.require(makeArray(arguments), {
+                                rel: path
+                            });
                         }, exports, module);
+
                         if (p instanceof Promise) {
                             p.then((d) => {
                                 if (isUndefined(d) && getType(module.exports) == "object" && !isEmptyObj(module.exports)) {
                                     d = module.exports;
                                 }
                                 runFunc(d);
-
-                                //设置返回数据的方法
-                                tar.get = (callback) => {
-                                    callback(d);
-                                };
-
-                                //判断是否有自定义id
-                                if (ids) {
-                                    arrayEach(ids, (e) => {
-                                        dataMap[e] = tar;
-                                    });
-                                }
                             });
                         } else {
                             //数据类型
                             runFunc(p);
-                            //设置返回数据的方法
-                            tar.get = (callback) => {
-                                callback(p);
-                            };
                         }
                     } else {
                         runFunc(data);
-                        //设置返回数据的方法
-                        tar.get = (callback) => {
-                            callback(data);
-                        };
                     }
+                    break;
+                    //任务类型
+                case "task":
+                    runFunc = null;
+                    //设定数据值
+                    if (getType(data).search('function') > -1) {
+                        let getFun = tar.get = (res, pubData) => {
+                            let p = data(function() {
+                                return R.require(makeArray(arguments), {
+                                    rel: path
+                                });
+                            }, pubData.pdata);
+                            p.then((d) => {
+                                res(d);
+                            });
+                        };
+
+                        //响应队列resolve函数
+                        while (0 in tar.c) {
+                            let {
+                                res,
+                                pubData
+                            } = tar.c.shift();
+                            getFun(res, pubData);
+                        }
+                    } else {
+                        throw 'task module type error';
+                    }
+
+                    //设置完成
+                    tar.state = RESOLVED;
+
+                    //清除无用数据
+                    delete tar.c;
                     break;
             };
         },
         //转换路径
-        getPath: (target, relatePath) => {
+        getPath: (target, pubData) => {
+            let relatePath = pubData.rel;
             //判断是否已经注册了路径
             if (paths[target]) {
                 target = paths[target];
@@ -374,8 +423,15 @@
             return target;
         },
         //引用模块
-        require: (args, relatePath) => {
-            return R.toProm(args, relatePath);
+        require: (args, pubData = {}) => {
+            let p = R.toProm(args, pubData);
+
+            //添加post方法
+            p.post = (data) => {
+                pubData.pdata = data;
+                return p;
+            }
+            return p;
         },
         //定义模块
         define: (d, ids) => {
@@ -402,6 +458,9 @@
     var oDefine = (d, ids) => {
         R.define(d, ids);
     };
+    var oTask = (d, ids) => {
+        R.task(d, ids);
+    }
 
     var sr = {
         config: data => {
@@ -437,13 +496,20 @@
             fun(baseResources, R);
         },
         require: require,
-        define: oDefine
+        define: oDefine,
+        task: oTask,
+        //缓存版本号
+        cacheInfo: {
+            k: "srcache",
+            // v: ""
+        }
     };
 
 
     //init
     glo.require || (glo.require = require);
     glo.define || (glo.define = oDefine);
+    glo.task || (glo.task = oTask);
     glo.sr = sr;
 
     window.baseResources = baseResources;
