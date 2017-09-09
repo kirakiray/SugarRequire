@@ -4,6 +4,8 @@ It's SugarRequire 4.0
 
 ## 为什么要使用SugarRequire
 
+当你需要完全使用异步加载的时候，你才需要这个加载器；
+
 最早的前端模块化分两个阵营，CMD 和 AMD；
 
 然而在界面逻辑的开发上，他们存在着很大的缺陷；
@@ -21,3 +23,5 @@ AMD规范是添加依赖前置，达到按需加载的需求，并不能做到�
 得益于浏览器对es7 `async await` 的支持，`Promise` 变成了一个很方便的东西，所以 SugarRequire4 会重依赖 `Promise` 来开发，抛弃以往SugarPromise的底层框架，所以旧浏览器是无法使用 SugarRequire4，它也仅支持ES6+坏境里运行，ES7环境下（能使用 `async await`）才会用得方便；
 
 SugarRequire4 是开发给未来的浏览器使用的，并不适合现有的场景（笔者现在写下这句话，时间是2017-06-21，所有的浏览器才刚刚开始支持 `async await`）；
+
+项目地址已迁移到 [drill.js](https://github.com/kirakiray/drill.js)
